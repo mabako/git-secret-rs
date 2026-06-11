@@ -78,6 +78,36 @@ fn add_tracks_secret_and_ignores_plaintext_file() {
 }
 
 #[test]
+fn add_uses_custom_secrets_dir() {
+    let repo = TempRepo::new("gsadd-dir");
+    run_success(Command::new("git").arg("init").arg(repo.path()));
+    run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("init")
+            .env("SECRETS_DIR", ".secrets")
+            .current_dir(repo.path()),
+    );
+
+    fs::write(repo.path().join("secret.txt"), "secret").expect("secret should be written");
+
+    run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("add")
+            .arg("secret.txt")
+            .env("SECRETS_DIR", ".secrets")
+            .current_dir(repo.path()),
+    );
+
+    let mapping = fs::read_to_string(repo.path().join(".secrets/paths/mapping.cfg"))
+        .expect("custom mapping should be readable");
+    assert_eq!(mapping, "secret.txt:\n");
+    assert!(
+        !repo.path().join(".gitsecret").exists(),
+        "default storage directory should not be created"
+    );
+}
+
+#[test]
 fn add_and_remove_paths_are_relative_to_current_subdirectory() {
     let repo = TempRepo::new("gsadd-subdir");
     run_success(Command::new("git").arg("init").arg(repo.path()));

@@ -4,12 +4,13 @@ use std::process::{Command, Stdio};
 
 use crate::AppResult;
 
-pub(crate) const SECRET_DIR: &str = ".gitsecret";
-pub(crate) const KEYS_DIR: &str = ".gitsecret/keys";
-pub(crate) const PATHS_DIR: &str = ".gitsecret/paths";
-pub(crate) const MAPPING_FILE: &str = ".gitsecret/paths/mapping.cfg";
+const DEFAULT_SECRET_DIR: &str = ".gitsecret";
+const KEYS_DIR_NAME: &str = "keys";
+const PATHS_DIR_NAME: &str = "paths";
+const MAPPING_FILE_NAME: &str = "mapping.cfg";
 const PROGRAM_FILES_X86_ENV: &str = "ProgramFiles(x86)";
 const SECRETS_GPG_COMMAND_ENV: &str = "SECRETS_GPG_COMMAND";
+const SECRETS_DIR_ENV: &str = "SECRETS_DIR";
 
 pub(crate) struct RecipientRecord {
     pub(crate) uid: String,
@@ -49,7 +50,7 @@ impl Repo {
 }
 
 pub(crate) fn ensure_initialized(repo: &Repo) -> AppResult<()> {
-    if !repo.join(MAPPING_FILE).is_file() {
+    if !repo.join(mapping_file()).is_file() {
         return Err("repository is not initialized; run 'git secret init' first".to_string());
     }
 
@@ -58,8 +59,43 @@ pub(crate) fn ensure_initialized(repo: &Repo) -> AppResult<()> {
 
 pub(crate) fn repo_gpg(repo: &Repo) -> Command {
     let mut command = gpg_command();
-    command.arg("--homedir").arg(repo.join(KEYS_DIR));
+    command.arg("--homedir").arg(repo.join(keys_dir()));
     command
+}
+
+pub(crate) fn secret_dir() -> PathBuf {
+    env::var_os(SECRETS_DIR_ENV)
+        .map(PathBuf::from)
+        .filter(|path| is_valid_secret_dir(path))
+        .unwrap_or_else(|| PathBuf::from(DEFAULT_SECRET_DIR))
+}
+
+pub(crate) fn keys_dir() -> PathBuf {
+    secret_dir().join(KEYS_DIR_NAME)
+}
+
+pub(crate) fn paths_dir() -> PathBuf {
+    secret_dir().join(PATHS_DIR_NAME)
+}
+
+pub(crate) fn mapping_file() -> PathBuf {
+    paths_dir().join(MAPPING_FILE_NAME)
+}
+
+fn is_valid_secret_dir(path: &Path) -> bool {
+    if path.as_os_str().is_empty() || path.is_absolute() {
+        return false;
+    }
+
+    let mut has_component = false;
+    for component in path.components() {
+        use std::path::Component::*;
+        match component {
+            Normal(_) => has_component = true,
+            CurDir | ParentDir | RootDir | Prefix(_) => return false,
+        }
+    }
+    has_component
 }
 
 #[derive(Default, clap::Args)]
@@ -282,5 +318,20 @@ mod tests {
             gpg_program_for_env(Some(Path::new("gpg2")), None, None),
             PathBuf::from("gpg2")
         );
+    }
+
+    #[test]
+    fn secret_dir_uses_valid_relative_paths() {
+        assert!(is_valid_secret_dir(Path::new(".custom-secret")));
+        assert!(is_valid_secret_dir(Path::new("secrets/store")));
+        assert!(!is_valid_secret_dir(Path::new("")));
+        assert!(!is_valid_secret_dir(Path::new(".")));
+        assert!(!is_valid_secret_dir(Path::new("../secrets")));
+
+        let absolute = std::env::current_dir().unwrap().join("secrets");
+        assert!(!is_valid_secret_dir(&absolute));
+
+        #[cfg(windows)]
+        assert!(!is_valid_secret_dir(Path::new(r"C:\secrets")));
     }
 }

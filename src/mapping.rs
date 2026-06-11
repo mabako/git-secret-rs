@@ -1,6 +1,6 @@
 use std::fs;
 
-use crate::git::{Repo, MAPPING_FILE};
+use crate::git::{mapping_file, Repo};
 use crate::AppResult;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -15,7 +15,7 @@ pub(crate) struct Mapping {
 
 impl Mapping {
     pub(crate) fn load(repo: &Repo) -> AppResult<Self> {
-        let path = repo.join(MAPPING_FILE);
+        let path = repo.join(mapping_file());
         let content =
             fs::read_to_string(&path).map_err(|e| format!("read {}: {}", path.display(), e))?;
 
@@ -69,7 +69,7 @@ impl Mapping {
     }
 
     pub(crate) fn save(&self, repo: &Repo) -> AppResult<()> {
-        let path = repo.join(MAPPING_FILE);
+        let path = repo.join(mapping_file());
         let mut content = self
             .entries
             .iter()

@@ -93,7 +93,7 @@ enum Command {
     /// writes an encrypted version of each file added by git-secret-add command.
     Hide(hide::Options),
 
-    /// initializes a git-secret repo by setting up a .gitsecret directory.
+    /// initializes a git-secret repo by setting up its storage directory.
     Init(init::Options),
 
     /// removes public keys for passed email addresses or GPG fingerprints from repo’s git-secret keyring.

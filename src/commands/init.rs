@@ -1,12 +1,9 @@
 use std::fs;
 
-use crate::git::{repo_gpg, Repo, KEYS_DIR, MAPPING_FILE, PATHS_DIR, SECRET_DIR};
+use crate::git::{keys_dir, mapping_file, paths_dir, repo_gpg, secret_dir, Repo};
 use crate::paths::secret_extension;
 use crate::process::CommandExt;
 use crate::AppResult;
-
-const ROOT_GITIGNORE_STATIC_ENTRIES: &[&str] =
-    &[".gitsecret/keys/random_seed", ".gitsecret/keys/*.lock"];
 
 #[derive(clap::Args)]
 pub(crate) struct Options {}
@@ -15,16 +12,21 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
     let _ = options;
 
     let repo = Repo::discover()?;
-    fs::create_dir_all(repo.join(KEYS_DIR)).map_err(|e| format!("create {}: {}", KEYS_DIR, e))?;
-    fs::create_dir_all(repo.join(PATHS_DIR)).map_err(|e| format!("create {}: {}", PATHS_DIR, e))?;
+    let secret_dir = secret_dir();
+    let keys_dir = keys_dir();
+    let paths_dir = paths_dir();
+    fs::create_dir_all(repo.join(&keys_dir))
+        .map_err(|e| format!("create {}: {}", keys_dir.display(), e))?;
+    fs::create_dir_all(repo.join(&paths_dir))
+        .map_err(|e| format!("create {}: {}", paths_dir.display(), e))?;
 
-    let mapping = repo.join(MAPPING_FILE);
+    let mapping = repo.join(mapping_file());
     if !mapping.exists() {
         fs::write(&mapping, "").map_err(|e| format!("write {}: {}", mapping.display(), e))?;
     }
 
     let extension = secret_extension();
-    let gitignore_entries = root_gitignore_entries(&extension);
+    let gitignore_entries = root_gitignore_entries(&secret_dir, &extension);
     let gitattributes_entries = root_gitattributes_entries(&extension);
     add_lines_to_root_gitignore(&repo, &gitignore_entries)?;
     add_lines_to_root_file(&repo, ".gitattributes", &gitattributes_entries)?;
@@ -34,16 +36,17 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
         .arg("--list-keys")
         .status_ok("initialize repository keyring")?;
 
-    println!("created {}", repo.join(SECRET_DIR).display());
+    println!("created {}", repo.join(&secret_dir).display());
     Ok(())
 }
 
-fn root_gitignore_entries(extension: &str) -> Vec<String> {
-    ROOT_GITIGNORE_STATIC_ENTRIES
-        .iter()
-        .map(|entry| (*entry).to_string())
-        .chain(std::iter::once(format!("!*{}", extension)))
-        .collect()
+fn root_gitignore_entries(secret_dir: &std::path::Path, extension: &str) -> Vec<String> {
+    let secret_dir = secret_dir.to_string_lossy().replace('\\', "/");
+    vec![
+        format!("{}/keys/random_seed", secret_dir),
+        format!("{}/keys/*.lock", secret_dir),
+        format!("!*{}", extension),
+    ]
 }
 
 fn root_gitattributes_entries(extension: &str) -> Vec<String> {

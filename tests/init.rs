@@ -105,6 +105,44 @@ fn init_creates_repository_files_with_empty_keyring() {
 }
 
 #[test]
+fn init_uses_custom_secrets_dir() {
+    let repo = TempRepo::new("git-secret-init-dir");
+    run_success(Command::new("git").arg("init").arg(repo.path()));
+
+    run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("init")
+            .env("SECRETS_DIR", ".secrets")
+            .current_dir(repo.path()),
+    );
+
+    let custom_dir = repo.path().join(".secrets");
+    let keys = custom_dir.join("keys");
+    let paths = custom_dir.join("paths");
+    let mapping = paths.join("mapping.cfg");
+
+    assert!(custom_dir.is_dir(), "{} should exist", custom_dir.display());
+    assert!(keys.is_dir(), "{} should exist", keys.display());
+    assert!(paths.is_dir(), "{} should exist", paths.display());
+    assert!(mapping.is_file(), "{} should exist", mapping.display());
+    assert!(
+        !repo.path().join(".gitsecret").exists(),
+        "default storage directory should not be created"
+    );
+
+    assert_eq!(
+        fs::read_to_string(&mapping).expect("mapping.cfg should be readable"),
+        ""
+    );
+
+    let gitignore =
+        fs::read_to_string(repo.path().join(".gitignore")).expect(".gitignore should be readable");
+    assert!(gitignore.contains(".secrets/keys/random_seed\n"));
+    assert!(gitignore.contains(".secrets/keys/*.lock\n"));
+    assert!(gitignore.contains("!*.secret\n"));
+}
+
+#[test]
 fn init_adds_default_gitignore_entries_without_duplicates() {
     let repo = TempRepo::new("git-secret-init-gitignore");
     run_success(Command::new("git").arg("init").arg(repo.path()));
