@@ -60,6 +60,16 @@ fn hide_and_reveal_round_trip_with_supplied_keys() {
             .current_dir(repo.path()),
     );
 
+    let mapping = fs::read_to_string(repo.path().join(".gitsecret/paths/mapping.cfg"))
+        .expect("mapping should be readable");
+    let mapping = mapping.trim();
+    assert!(mapping.starts_with("secret.txt:"), "{}", mapping);
+    assert_eq!(
+        mapping.trim_start_matches("secret.txt:").len(),
+        64,
+        "hide should store the sha256 digest"
+    );
+
     let encrypted_path = repo.path().join("secret.txt.secret");
     assert!(
         encrypted_path.is_file(),

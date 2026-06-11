@@ -46,9 +46,5 @@ fn add_tracks_secret_and_ignores_plaintext_file() {
 
     let mapping = fs::read_to_string(repo.path().join(".gitsecret/paths/mapping.cfg"))
         .expect("mapping should be readable");
-    assert!(
-        mapping.starts_with("config/secret.env:"),
-        "mapping should contain the tracked secret:\n{}",
-        mapping
-    );
+    assert_eq!(mapping, "config/secret.env:\n");
 }

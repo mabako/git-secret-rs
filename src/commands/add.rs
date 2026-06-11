@@ -1,7 +1,6 @@
 use std::fs;
 use std::path::PathBuf;
 
-use crate::crypto::sha256_file;
 use crate::git::{ensure_initialized, Repo};
 use crate::mapping::Mapping;
 use crate::paths::normalize_secret_path;
@@ -23,8 +22,7 @@ pub(crate) fn run(paths: Vec<PathBuf>) -> AppResult<()> {
         if !plaintext.is_file() {
             return Err(format!("{} is not a file", normalized));
         }
-        let digest = sha256_file(&plaintext)?;
-        if mapping.insert_or_update(normalized.clone(), digest) {
+        if mapping.insert_or_update(normalized.clone(), String::new()) {
             println!("added {}", normalized);
             added += 1;
         }
