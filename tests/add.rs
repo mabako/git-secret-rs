@@ -65,6 +65,16 @@ fn add_tracks_secret_and_ignores_plaintext_file() {
     let list_help = String::from_utf8_lossy(&list_help.stdout);
     assert!(list_help.contains("git secret list"));
     assert!(list_help.contains("-h"));
+
+    let remove_help = run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("remove")
+            .arg("-h"),
+    );
+    let remove_help = String::from_utf8_lossy(&remove_help.stdout);
+    assert!(remove_help.contains("git-secret-remove"));
+    assert!(remove_help.contains("-c"));
+    assert!(remove_help.contains("-h"));
 }
 
 #[test]
@@ -91,6 +101,8 @@ fn add_and_remove_paths_are_relative_to_current_subdirectory() {
     let mapping = fs::read_to_string(repo.path().join(".gitsecret/paths/mapping.cfg"))
         .expect("mapping should be readable");
     assert_eq!(mapping, "foo/bar.txt:\n");
+    let encrypted = nested_dir.join("bar.txt.secret");
+    fs::write(&encrypted, "encrypted").expect("encrypted secret should be written");
 
     run_success(
         Command::new(env!("CARGO_BIN_EXE_git-secret"))
@@ -102,4 +114,30 @@ fn add_and_remove_paths_are_relative_to_current_subdirectory() {
     let mapping = fs::read_to_string(repo.path().join(".gitsecret/paths/mapping.cfg"))
         .expect("mapping should be readable");
     assert_eq!(mapping, "");
+    assert!(
+        encrypted.exists(),
+        "remove without -c should leave encrypted files in place"
+    );
+
+    run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("add")
+            .arg("bar.txt")
+            .current_dir(&nested_dir),
+    );
+    run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("remove")
+            .arg("-c")
+            .arg("bar.txt")
+            .current_dir(&nested_dir),
+    );
+
+    let mapping = fs::read_to_string(repo.path().join(".gitsecret/paths/mapping.cfg"))
+        .expect("mapping should be readable");
+    assert_eq!(mapping, "");
+    assert!(
+        !encrypted.exists(),
+        "remove -c should delete encrypted files"
+    );
 }

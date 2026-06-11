@@ -35,7 +35,7 @@ pub(crate) fn run(args: Vec<OsString>) -> AppResult<()> {
         "whoknows" => whoknows::run(whoknows::Options::parse(args.rest_strings()?)?),
         "killperson" | "removeperson" => remove_person::run(args.rest_strings()?),
         "add" => add::run(add::Options::parse(args.rest_strings()?)?),
-        "remove" => remove::run(args.rest_paths()?),
+        "remove" => remove::run(remove::Options::parse(args.rest_strings()?)?),
         "list" => list::run(list::Options::parse(args.rest_strings()?)?),
         "hide" => hide::run(hide::Options::parse(args.rest_strings()?)?),
         "reveal" => reveal::run(reveal::Options::parse(args.rest_strings()?)?),
@@ -60,7 +60,7 @@ Usage:\n\
   git secret whoknows [-l|-h]\n\
   git secret removeperson <fingerprint-or-key-id-or-email>...\n\
   git secret add [-h] <file>...\n\
-  git secret remove <file>...\n\
+  git secret remove [-c] [-h] <file>...\n\
   git secret list [-h]\n\
   git secret hide [-c] [-F] [-P] [-d] [-m] [-h] [file...]\n\
   git secret reveal [-f] [-F] [-d <gpg-homedir>] [-v] [-p <password>] [-P] [-h] [file...]\n\

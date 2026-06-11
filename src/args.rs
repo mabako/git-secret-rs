@@ -1,5 +1,4 @@
 use std::ffi::OsString;
-use std::path::PathBuf;
 
 use crate::AppResult;
 
@@ -25,17 +24,6 @@ impl Args {
             .map(|value| {
                 value
                     .into_string()
-                    .map_err(|_| "argument is not valid UTF-8".to_string())
-            })
-            .collect()
-    }
-
-    pub(crate) fn rest_paths(self) -> AppResult<Vec<PathBuf>> {
-        self.values
-            .map(|value| {
-                value
-                    .into_string()
-                    .map(PathBuf::from)
                     .map_err(|_| "argument is not valid UTF-8".to_string())
             })
             .collect()
