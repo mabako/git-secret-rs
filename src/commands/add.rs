@@ -1,3 +1,4 @@
+use std::fs;
 use std::path::PathBuf;
 
 use crate::crypto::sha256_file;
@@ -27,6 +28,7 @@ pub(crate) fn run(paths: Vec<PathBuf>) -> AppResult<()> {
             println!("added {}", normalized);
             added += 1;
         }
+        add_to_gitignore(&repo, &normalized)?;
     }
 
     if added > 0 {
@@ -34,4 +36,26 @@ pub(crate) fn run(paths: Vec<PathBuf>) -> AppResult<()> {
     }
 
     Ok(())
+}
+
+fn add_to_gitignore(repo: &Repo, path: &str) -> AppResult<()> {
+    let gitignore = repo.join(".gitignore");
+    let content = match fs::read_to_string(&gitignore) {
+        Ok(content) => content,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => String::new(),
+        Err(error) => return Err(format!("read {}: {}", gitignore.display(), error)),
+    };
+
+    if content.lines().any(|line| line.trim() == path) {
+        return Ok(());
+    }
+
+    let mut updated = content;
+    if !updated.is_empty() && !updated.ends_with('\n') {
+        updated.push('\n');
+    }
+    updated.push_str(path);
+    updated.push('\n');
+
+    fs::write(&gitignore, updated).map_err(|e| format!("write {}: {}", gitignore.display(), e))
 }
