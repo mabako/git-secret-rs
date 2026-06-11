@@ -60,7 +60,7 @@ Usage:\n\
   git secret add <file>...\n\
   git secret remove <file>...\n\
   git secret list\n\
-  git secret hide [--force] [--delete] [file...]\n\
+  git secret hide [-c] [-F] [-P] [-d] [-m] [-h] [file...]\n\
   git secret reveal [--force] [file...]\n\
   git secret cat <file>...\n\
   git secret clean [file...]\n\

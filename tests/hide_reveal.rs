@@ -56,7 +56,30 @@ fn hide_and_reveal_round_trip_with_supplied_keys() {
     run_success(
         Command::new(env!("CARGO_BIN_EXE_git-secret"))
             .arg("hide")
-            .arg("--force")
+            .current_dir(repo.path()),
+    );
+    run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("hide")
+            .current_dir(repo.path()),
+    );
+    let hide_modified_only = run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("hide")
+            .arg("-m")
+            .current_dir(repo.path()),
+    );
+    assert!(
+        String::from_utf8_lossy(&hide_modified_only.stdout).contains("unchanged secret.txt"),
+        "hide -m should skip unchanged files:\n{}",
+        String::from_utf8_lossy(&hide_modified_only.stdout)
+    );
+
+    fs::write(&secret_path, "the launch code changed").expect("plaintext secret should be updated");
+    run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("hide")
+            .arg("-m")
             .current_dir(repo.path()),
     );
 
@@ -78,10 +101,16 @@ fn hide_and_reveal_round_trip_with_supplied_keys() {
     );
     assert_ne!(
         fs::read(&encrypted_path).expect("encrypted file should be readable"),
-        b"the launch code is swordfish"
+        b"the launch code changed"
     );
 
     fs::remove_file(&secret_path).expect("plaintext should be removed before reveal");
+    run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("hide")
+            .arg("-F")
+            .current_dir(repo.path()),
+    );
     run_success(
         Command::new(env!("CARGO_BIN_EXE_git-secret"))
             .arg("reveal")
@@ -92,8 +121,22 @@ fn hide_and_reveal_round_trip_with_supplied_keys() {
 
     assert_eq!(
         fs::read_to_string(&secret_path).expect("revealed plaintext should be readable"),
-        "the launch code is swordfish"
+        "the launch code changed"
     );
+
+    let hide_help = run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("hide")
+            .arg("-h"),
+    );
+    let hide_help = String::from_utf8_lossy(&hide_help.stdout);
+    assert!(hide_help.contains("git-secret-hide"));
+    assert!(hide_help.contains("-c"));
+    assert!(hide_help.contains("-F"));
+    assert!(hide_help.contains("-P"));
+    assert!(hide_help.contains("-d"));
+    assert!(hide_help.contains("-m"));
+    assert!(hide_help.contains("-h"));
 }
 
 fn import_public_key_to_repo_keyring(keyring: &PathBuf, public_key: &PathBuf) {
