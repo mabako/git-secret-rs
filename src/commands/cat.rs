@@ -11,8 +11,6 @@ pub(crate) struct Options {
     gpg: UserGpgOptions,
     #[arg(value_name = "filename")]
     paths: Vec<PathBuf>,
-    #[arg(short = 'h', long = "help")]
-    help: bool,
 }
 
 #[cfg(test)]
@@ -23,10 +21,6 @@ impl Options {
 }
 
 pub(crate) fn run(options: Options) -> AppResult<()> {
-    if options.help {
-        print_help();
-        return Ok(());
-    }
     if options.paths.is_empty() {
         return Err("cat requires at least one file".to_string());
     }
@@ -45,20 +39,6 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
     }
 
     Ok(())
-}
-
-fn print_help() {
-    println!(
-        "git-secret-cat - prints decrypted contents of passed files.\n\
-\n\
-Usage:\n\
-  git secret cat [-d <gpg-homedir>] [-p <password>] <file> [file...]\n\
-\n\
-Options:\n\
-  -d  specifies --homedir option for gpg\n\
-  -p  specifies password for noinput mode, adds --passphrase option for gpg\n\
-  -h  shows this help"
-    );
 }
 
 #[cfg(test)]
@@ -83,6 +63,6 @@ mod tests {
 
     #[test]
     fn cat_options_parse_help() {
-        assert!(Options::parse(vec!["-h".to_string()]).unwrap().help);
+        assert!(Options::parse(vec!["-h".to_string()]).is_err());
     }
 }

@@ -169,20 +169,20 @@ fn hide_and_reveal_round_trip_with_supplied_keys() {
             .arg("-h"),
     );
     let cat_help = String::from_utf8_lossy(&cat_help.stdout);
-    assert!(cat_help.contains("git-secret-cat"));
+    assert!(cat_help.contains("Usage:"));
     assert!(cat_help.contains("-d"));
     assert!(cat_help.contains("-p"));
-    assert!(cat_help.contains("-h"));
+    assert!(cat_help.contains("--help"));
     let changes_help = run_success(
         Command::new(env!("CARGO_BIN_EXE_git-secret"))
             .arg("changes")
             .arg("-h"),
     );
     let changes_help = String::from_utf8_lossy(&changes_help.stdout);
-    assert!(changes_help.contains("git-secret-changes"));
+    assert!(changes_help.contains("Usage:"));
     assert!(changes_help.contains("-d"));
     assert!(changes_help.contains("-p"));
-    assert!(changes_help.contains("-h"));
+    assert!(changes_help.contains("--help"));
 
     fs::remove_file(&secret_path).expect("plaintext should be removed before reveal");
     run_success(
@@ -220,13 +220,13 @@ fn hide_and_reveal_round_trip_with_supplied_keys() {
             .arg("-h"),
     );
     let hide_help = String::from_utf8_lossy(&hide_help.stdout);
-    assert!(hide_help.contains("git-secret-hide"));
+    assert!(hide_help.contains("Usage:"));
     assert!(hide_help.contains("-c"));
     assert!(hide_help.contains("-F"));
     assert!(hide_help.contains("-P"));
     assert!(hide_help.contains("-d"));
     assert!(hide_help.contains("-m"));
-    assert!(hide_help.contains("-h"));
+    assert!(hide_help.contains("--help"));
 
     let reveal_help = run_success(
         Command::new(env!("CARGO_BIN_EXE_git-secret"))
@@ -234,14 +234,14 @@ fn hide_and_reveal_round_trip_with_supplied_keys() {
             .arg("-h"),
     );
     let reveal_help = String::from_utf8_lossy(&reveal_help.stdout);
-    assert!(reveal_help.contains("git-secret-reveal"));
+    assert!(reveal_help.contains("Usage:"));
     assert!(reveal_help.contains("-f"));
     assert!(reveal_help.contains("-F"));
     assert!(reveal_help.contains("-d"));
     assert!(reveal_help.contains("-v"));
     assert!(reveal_help.contains("-p"));
     assert!(reveal_help.contains("-P"));
-    assert!(reveal_help.contains("-h"));
+    assert!(reveal_help.contains("--help"));
 }
 
 fn import_public_key_to_repo_keyring(keyring: &PathBuf, public_key: &PathBuf) {

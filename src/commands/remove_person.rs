@@ -4,10 +4,8 @@ use crate::AppResult;
 
 #[derive(clap::Args)]
 pub(crate) struct Options {
-    #[arg(value_name = "fingerprint-or-key-id-or-email")]
+    #[arg(value_name = "email-or-fingerprint")]
     keys: Vec<String>,
-    #[arg(short = 'h', long = "help")]
-    help: bool,
 }
 
 #[cfg(test)]
@@ -18,10 +16,6 @@ impl Options {
 }
 
 pub(crate) fn run(options: Options) -> AppResult<()> {
-    if options.help {
-        print_help();
-        return Ok(());
-    }
     if options.keys.is_empty() {
         return Err("removeperson requires at least one fingerprint, key id, or email".to_string());
     }
@@ -42,27 +36,13 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
     Ok(())
 }
 
-fn print_help() {
-    println!(
-        "git-secret-removeperson - removes public keys for passed email addresses or GPG fingerprints from repo's git-secret keyring.\n\
-\n\
-Usage:\n\
-  git secret removeperson [-h] <fingerprint-or-key-id-or-email>...\n\
-\n\
-Options:\n\
-  -h  shows this help"
-    );
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn removeperson_options_parse_help_and_keys() {
-        let options =
-            Options::parse(vec!["-h".to_string(), "user@example.com".to_string()]).unwrap();
-        assert!(options.help);
+        let options = Options::parse(vec!["user@example.com".to_string()]).unwrap();
         assert_eq!(options.keys, vec!["user@example.com".to_string()]);
     }
 

@@ -2,7 +2,7 @@ use std::ffi::OsString;
 
 #[cfg(test)]
 use clap::{Args as ClapArgs, FromArgMatches};
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, Parser, Subcommand};
 
 use crate::AppResult;
 
@@ -21,14 +21,23 @@ mod textconv;
 mod whoknows;
 
 pub(crate) fn run(args: Vec<OsString>) -> AppResult<()> {
-    let cli = Cli::try_parse_from(std::iter::once(OsString::from("git-secret")).chain(args))
-        .map_err(|error| error.to_string())?;
+    let cli = match Cli::try_parse_from(std::iter::once(OsString::from("git-secret")).chain(args)) {
+        Ok(cli) => cli,
+        Err(error) if error.use_stderr() => return Err(error.to_string()),
+        Err(error) => {
+            print!("{}", error);
+            return Ok(());
+        }
+    };
 
-    if cli.help || matches!(cli.command, None | Some(Command::Help | Command::Usage)) {
-        print_usage();
+    if matches!(cli.command, None | Some(Command::Help | Command::Usage)) {
+        Cli::command()
+            .print_help()
+            .map_err(|e| format!("print help: {}", e))?;
+        println!();
         return Ok(());
     }
-    if cli.version || matches!(cli.command, Some(Command::Version)) {
+    if matches!(cli.command, Some(Command::Version)) {
         println!("git-secret-rs {}", env!("CARGO_PKG_VERSION"));
         return Ok(());
     }
@@ -52,36 +61,54 @@ pub(crate) fn run(args: Vec<OsString>) -> AppResult<()> {
 }
 
 #[derive(Parser)]
-#[command(
-    disable_help_flag = true,
-    disable_help_subcommand = true,
-    disable_version_flag = true
-)]
+#[command(disable_help_subcommand = true, disable_version_flag = true)]
 struct Cli {
-    #[arg(short = 'h', long = "help")]
-    help: bool,
-    #[arg(short = 'v', long = "version")]
-    version: bool,
     #[command(subcommand)]
     command: Option<Command>,
 }
 
 #[derive(Subcommand)]
 enum Command {
+    /// tells git secret which files hold secrets.
+    Add(add::Options),
+
+    /// prints the decrypted contents of the passed files.
+    Cat(cat::Options),
+
+    /// shows changes between the current versions of secret files and encrypted versions.
+    Changes(changes::Options),
+
+    /// deletes all files in the current git-secret repo that end with .secret.
+    Clean(clean::Options),
+
+    /// writes an encrypted version of each file added by git-secret-add command.
+    Hide(hide::Options),
+
+    /// initializes a git-secret repo by setting up a .gitsecret directory.
     Init(init::Options),
-    Tell(tell::Options),
-    Whoknows(whoknows::Options),
+
+    /// removes public keys for passed email addresses or GPG fingerprints from repo’s git-secret keyring.
     #[command(alias = "killperson")]
     Removeperson(remove_person::Options),
-    Add(add::Options),
-    Remove(remove::Options),
+
+    /// print the files currently considered secret in this repo.
     List(list::Options),
-    Hide(hide::Options),
+
+    /// stops files from being tracked by git-secret.
+    Remove(remove::Options),
+
+    /// decrypts passed files, or all files considered secret by git-secret.
     Reveal(reveal::Options),
-    Cat(cat::Options),
+
+    /// adds user(s) to the list of those able to encrypt/decrypt secrets.
+    Tell(tell::Options),
+
+    /// print email addresses allowed to access the secrets in this repo.
+    Whoknows(whoknows::Options),
+
+    #[command(hide = true)]
     Textconv(textconv::Options),
-    Clean(clean::Options),
-    Changes(changes::Options),
+
     Help,
     Usage,
     Version,
@@ -92,30 +119,9 @@ pub(crate) fn parse_options<T>(name: &'static str, args: Vec<String>) -> AppResu
 where
     T: ClapArgs + FromArgMatches,
 {
-    let command = T::augment_args(clap::Command::new(name).disable_help_flag(true));
+    let command = T::augment_args(clap::Command::new(name));
     let matches = command
         .try_get_matches_from(std::iter::once(name.to_string()).chain(args))
         .map_err(|error| error.to_string())?;
     T::from_arg_matches(&matches).map_err(|error| error.to_string())
-}
-
-fn print_usage() {
-    println!(
-        "git-secret-rs {}\n\
-\n\
-Usage:\n\
-  git secret init [-h]\n\
-  git secret tell [-m] [-d <gpg-homedir>] [fingerprint-or-key-id-or-email]...\n\
-  git secret whoknows [-l|-h]\n\
-  git secret removeperson [-h] <fingerprint-or-key-id-or-email>...\n\
-  git secret add [-h] <file>...\n\
-  git secret remove [-c] [-h] <file>...\n\
-  git secret list [-h]\n\
-  git secret hide [-c] [-F] [-P] [-d] [-m] [-h] [file...]\n\
-  git secret reveal [-f] [-F] [-d <gpg-homedir>] [-v] [-p <password>] [-P] [-h] [file...]\n\
-  git secret cat [-d <gpg-homedir>] [-p <password>] <file> [file...]\n\
-  git secret clean [-v] [-h]\n\
-  git secret changes [-d <gpg-homedir>] [-p <password>] [-h]",
-        env!("CARGO_PKG_VERSION")
-    );
 }

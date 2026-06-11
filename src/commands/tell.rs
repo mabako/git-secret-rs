@@ -7,14 +7,19 @@ use crate::AppResult;
 
 #[derive(clap::Args)]
 pub(crate) struct Options {
-    #[arg(short = 'm')]
+    #[arg(
+        short = 'm',
+        help = "uses your current `git config user.email` setting as an identifier for the key."
+    )]
     use_git_email: bool,
-    #[arg(short = 'd', value_name = "gpg-homedir")]
+    #[arg(
+        short = 'd',
+        value_name = "gpg-homedir",
+        help = "specifies `--homedir` option for `gpg`, basically use this option if your store your keys in a custom location."
+    )]
     gpg_homedir: Option<PathBuf>,
-    #[arg(value_name = "fingerprint-or-key-id-or-email")]
+    #[arg(value_name = "email-or-fingerprint")]
     keys: Vec<String>,
-    #[arg(short = 'h', long = "help")]
-    help: bool,
 }
 
 #[cfg(test)]
@@ -25,11 +30,6 @@ impl Options {
 }
 
 pub(crate) fn run(options: Options) -> AppResult<Vec<String>> {
-    if options.help {
-        print_help();
-        return Ok(Vec::new());
-    }
-
     let mut keys = options.keys;
     if options.use_git_email {
         keys.push(git_user_email()?);
@@ -112,20 +112,6 @@ fn git_user_email() -> AppResult<String> {
     Ok(email)
 }
 
-fn print_help() {
-    println!(
-        "git-secret tell - adds user(s) to the list of those able to encrypt/decrypt secrets.\n\
-\n\
-Usage:\n\
-  git secret tell [-m] [-d <gpg-homedir>] [fingerprint-or-key-id-or-email]...\n\
-\n\
-Options:\n\
-  -m  uses your current git config user.email setting as an identifier for the key\n\
-  -d  specifies --homedir option for gpg\n\
-  -h  shows this help"
-    );
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -147,8 +133,7 @@ mod tests {
 
     #[test]
     fn tell_options_parse_help() {
-        let options = Options::parse(vec!["-h".to_string()]).unwrap();
-        assert!(options.help);
+        assert!(Options::parse(vec!["-h".to_string()]).is_err());
     }
 
     #[test]

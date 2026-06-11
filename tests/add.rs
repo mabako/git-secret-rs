@@ -54,8 +54,8 @@ fn add_tracks_secret_and_ignores_plaintext_file() {
             .arg("-h"),
     );
     let add_help = String::from_utf8_lossy(&add_help.stdout);
-    assert!(add_help.contains("git secret add"));
-    assert!(add_help.contains("-h"));
+    assert!(add_help.contains("Usage:"));
+    assert!(add_help.contains("--help"));
 
     let list_help = run_success(
         Command::new(env!("CARGO_BIN_EXE_git-secret"))
@@ -63,8 +63,8 @@ fn add_tracks_secret_and_ignores_plaintext_file() {
             .arg("-h"),
     );
     let list_help = String::from_utf8_lossy(&list_help.stdout);
-    assert!(list_help.contains("git secret list"));
-    assert!(list_help.contains("-h"));
+    assert!(list_help.contains("Usage:"));
+    assert!(list_help.contains("--help"));
 
     let remove_help = run_success(
         Command::new(env!("CARGO_BIN_EXE_git-secret"))
@@ -72,9 +72,9 @@ fn add_tracks_secret_and_ignores_plaintext_file() {
             .arg("-h"),
     );
     let remove_help = String::from_utf8_lossy(&remove_help.stdout);
-    assert!(remove_help.contains("git-secret-remove"));
+    assert!(remove_help.contains("Usage:"));
     assert!(remove_help.contains("-c"));
-    assert!(remove_help.contains("-h"));
+    assert!(remove_help.contains("--help"));
 }
 
 #[test]

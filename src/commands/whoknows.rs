@@ -3,10 +3,8 @@ use crate::AppResult;
 
 #[derive(clap::Args)]
 pub(crate) struct Options {
-    #[arg(short = 'l')]
+    #[arg(short = 'l', help = "'long' output, shows key expiration dates.")]
     long: bool,
-    #[arg(short = 'h', long = "help")]
-    help: bool,
 }
 
 #[cfg(test)]
@@ -17,11 +15,6 @@ impl Options {
 }
 
 pub(crate) fn run(options: Options) -> AppResult<()> {
-    if options.help {
-        print_help();
-        return Ok(());
-    }
-
     let repo = Repo::discover()?;
     ensure_initialized(&repo)?;
     let recipients = recipient_records(&repo)?;
@@ -42,28 +35,14 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
     Ok(())
 }
 
-fn print_help() {
-    println!(
-        "git-secret-whoknows - print email addresses allowed to access the secrets in this repo.\n\
-\n\
-Usage:\n\
-  git secret whoknows [-l|-h]\n\
-\n\
-Options:\n\
-  -l  long output, shows key expiration dates\n\
-  -h  shows this help"
-    );
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn whoknows_options_parse_long_and_help() {
-        let options = Options::parse(vec!["-l".to_string(), "-h".to_string()]).unwrap();
+        let options = Options::parse(vec!["-l".to_string()]).unwrap();
         assert!(options.long);
-        assert!(options.help);
     }
 
     #[test]

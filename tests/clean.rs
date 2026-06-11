@@ -52,7 +52,7 @@ fn clean_deletes_secret_files_quietly_unless_verbose() {
             .arg("-h"),
     );
     let help = String::from_utf8_lossy(&help.stdout);
-    assert!(help.contains("git-secret-clean"));
+    assert!(help.contains("Usage:"));
     assert!(help.contains("-v"));
-    assert!(help.contains("-h"));
+    assert!(help.contains("--help"));
 }

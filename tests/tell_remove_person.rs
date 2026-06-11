@@ -64,9 +64,9 @@ fn tell_and_removeperson_accept_fingerprint() {
             .arg("-h"),
     );
     let whoknows_help = String::from_utf8_lossy(&whoknows_help.stdout);
-    assert!(whoknows_help.contains("git-secret-whoknows"));
+    assert!(whoknows_help.contains("Usage:"));
     assert!(whoknows_help.contains("-l"));
-    assert!(whoknows_help.contains("-h"));
+    assert!(whoknows_help.contains("--help"));
 
     let removeperson_help = run_success(
         Command::new(env!("CARGO_BIN_EXE_git-secret"))
@@ -74,8 +74,8 @@ fn tell_and_removeperson_accept_fingerprint() {
             .arg("-h"),
     );
     let removeperson_help = String::from_utf8_lossy(&removeperson_help.stdout);
-    assert!(removeperson_help.contains("git-secret-removeperson"));
-    assert!(removeperson_help.contains("-h"));
+    assert!(removeperson_help.contains("Usage:"));
+    assert!(removeperson_help.contains("--help"));
 
     run_success(
         Command::new(env!("CARGO_BIN_EXE_git-secret"))
@@ -128,10 +128,10 @@ fn tell_can_use_git_email_and_help_flag() {
             .arg("-h"),
     );
     let tell_help = String::from_utf8_lossy(&tell_help.stdout);
-    assert!(tell_help.contains("git-secret tell"));
+    assert!(tell_help.contains("Usage:"));
     assert!(tell_help.contains("-m"));
     assert!(tell_help.contains("-d"));
-    assert!(tell_help.contains("-h"));
+    assert!(tell_help.contains("--help"));
 
     run_success(
         Command::new(env!("CARGO_BIN_EXE_git-secret"))

@@ -10,19 +10,26 @@ use crate::AppResult;
 
 #[derive(clap::Args)]
 pub(crate) struct Options {
-    #[arg(short = 'c')]
+    #[arg(
+        short = 'c',
+        help = "deletes encrypted files before creating new ones."
+    )]
     clean_encrypted: bool,
-    #[arg(short = 'F')]
+    #[arg(
+        short = 'F',
+        help = "forces hide to continue if a file to encrypt is missing."
+    )]
     continue_missing: bool,
-    #[arg(short = 'P')]
+    #[arg(
+        short = 'P',
+        help = "preserve permissions of unencrypted file in encrypted file."
+    )]
     preserve_permissions: bool,
-    #[arg(short = 'd')]
+    #[arg(short = 'd', help = "deletes unencrypted files after encryption.")]
     delete_plaintext: bool,
-    #[arg(short = 'm')]
+    #[arg(short = 'm', help = "encrypt files only when modified.")]
     modified_only: bool,
-    #[arg(short = 'h', long = "help")]
-    help: bool,
-    #[arg(value_name = "file")]
+    #[arg(value_name = "filename")]
     paths: Vec<PathBuf>,
 }
 
@@ -34,11 +41,6 @@ impl Options {
 }
 
 pub(crate) fn run(options: Options) -> AppResult<()> {
-    if options.help {
-        print_help();
-        return Ok(());
-    }
-
     let repo = Repo::discover()?;
     ensure_initialized(&repo)?;
     let recipients = recipient_key_ids(&repo)?;
@@ -111,23 +113,6 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
     }
 
     Ok(())
-}
-
-fn print_help() {
-    println!(
-        "git-secret-hide - encrypts all added files with the public keys in this repo.\n\
-\n\
-Usage:\n\
-  git secret hide [-c] [-F] [-P] [-d] [-m] [-h] [file...]\n\
-\n\
-Options:\n\
-  -c  deletes encrypted files before creating new ones\n\
-  -F  forces hide to continue if a file to encrypt is missing\n\
-  -P  preserve permissions of unencrypted file in encrypted file\n\
-  -d  deletes unencrypted files after encryption\n\
-  -m  encrypt files only when modified\n\
-  -h  shows this help"
-    );
 }
 
 #[cfg(test)]

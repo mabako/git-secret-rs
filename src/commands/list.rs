@@ -3,10 +3,7 @@ use crate::mapping::Mapping;
 use crate::AppResult;
 
 #[derive(clap::Args)]
-pub(crate) struct Options {
-    #[arg(short = 'h', long = "help")]
-    help: bool,
-}
+pub(crate) struct Options {}
 
 #[cfg(test)]
 impl Options {
@@ -16,10 +13,7 @@ impl Options {
 }
 
 pub(crate) fn run(options: Options) -> AppResult<()> {
-    if options.help {
-        print_help();
-        return Ok(());
-    }
+    let _ = options;
 
     let repo = Repo::discover()?;
     ensure_initialized(&repo)?;
@@ -31,26 +25,13 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
     Ok(())
 }
 
-fn print_help() {
-    println!(
-        "git secret list - print the files currently considered secret in this repo\n\
-\n\
-Usage:\n\
-  git secret list [-h]\n\
-\n\
-Options:\n\
-  -h  shows this help"
-    );
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn list_options_parse_help() {
-        let options = Options::parse(vec!["-h".to_string()]).unwrap();
-        assert!(options.help);
+        assert!(Options::parse(vec!["-h".to_string()]).is_err());
     }
 
     #[test]

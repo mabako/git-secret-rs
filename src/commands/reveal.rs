@@ -9,19 +9,26 @@ use crate::AppResult;
 
 #[derive(clap::Args)]
 pub(crate) struct Options {
-    #[arg(short = 'f')]
+    #[arg(
+        short = 'f',
+        help = "forces gpg to overwrite existing files without prompt."
+    )]
     force: bool,
-    #[arg(short = 'F')]
+    #[arg(
+        short = 'F',
+        help = "forces reveal to continue even if a file fails to decrypt."
+    )]
     continue_on_error: bool,
-    #[arg(short = 'v')]
+    #[arg(short = 'v', help = "verbose, shows extra information.")]
     verbose: bool,
-    #[arg(short = 'P')]
+    #[arg(
+        short = 'P',
+        help = "preserve permissions of encrypted file in unencrypted file."
+    )]
     preserve_permissions: bool,
-    #[arg(short = 'h', long = "help")]
-    help: bool,
     #[command(flatten)]
     gpg: UserGpgOptions,
-    #[arg(value_name = "file")]
+    #[arg(value_name = "filename")]
     paths: Vec<PathBuf>,
 }
 
@@ -33,11 +40,6 @@ impl Options {
 }
 
 pub(crate) fn run(options: Options) -> AppResult<()> {
-    if options.help {
-        print_help();
-        return Ok(());
-    }
-
     let repo = Repo::discover()?;
     ensure_initialized(&repo)?;
     let mapping = Mapping::load(&repo)?;
@@ -103,24 +105,6 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
     }
 
     Ok(())
-}
-
-fn print_help() {
-    println!(
-        "git-secret-reveal - decrypts passed files, or all files considered secret by git-secret.\n\
-\n\
-Usage:\n\
-  git secret reveal [-f] [-F] [-d <gpg-homedir>] [-v] [-p <password>] [-P] [-h] [file...]\n\
-\n\
-Options:\n\
-  -f  forces gpg to overwrite existing files without prompt\n\
-  -F  forces reveal to continue even if a file fails to decrypt\n\
-  -d  specifies --homedir option for gpg\n\
-  -v  verbose, shows extra information\n\
-  -p  specifies password for noinput mode, adds --passphrase option for gpg\n\
-  -P  preserve permissions of encrypted file in unencrypted file\n\
-  -h  shows this help"
-    );
 }
 
 #[cfg(test)]

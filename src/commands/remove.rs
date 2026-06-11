@@ -8,11 +8,9 @@ use crate::AppResult;
 
 #[derive(clap::Args)]
 pub(crate) struct Options {
-    #[arg(short = 'c')]
+    #[arg(short = 'c', help = "deletes existing real encrypted files.")]
     clean_encrypted: bool,
-    #[arg(short = 'h', long = "help")]
-    help: bool,
-    #[arg(value_name = "file")]
+    #[arg(value_name = "filename")]
     paths: Vec<PathBuf>,
 }
 
@@ -24,10 +22,6 @@ impl Options {
 }
 
 pub(crate) fn run(options: Options) -> AppResult<()> {
-    if options.help {
-        print_help();
-        return Ok(());
-    }
     if options.paths.is_empty() {
         return Err("remove requires at least one file".to_string());
     }
@@ -59,34 +53,15 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
     Ok(())
 }
 
-fn print_help() {
-    println!(
-        "git-secret-remove - stops files from being tracked by git-secret.\n\
-\n\
-Usage:\n\
-  git secret remove [-c] [-h] <file> [file...]\n\
-\n\
-Options:\n\
-  -c  deletes existing real encrypted files\n\
-  -h  shows help"
-    );
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn remove_options_parse_clean_help_and_paths() {
-        let options = Options::parse(vec![
-            "-c".to_string(),
-            "-h".to_string(),
-            "secret.txt".to_string(),
-        ])
-        .unwrap();
+        let options = Options::parse(vec!["-c".to_string(), "secret.txt".to_string()]).unwrap();
 
         assert!(options.clean_encrypted);
-        assert!(options.help);
         assert_eq!(options.paths, vec![PathBuf::from("secret.txt")]);
     }
 

@@ -6,10 +6,8 @@ use crate::AppResult;
 
 #[derive(clap::Args)]
 pub(crate) struct Options {
-    #[arg(short = 'v')]
+    #[arg(short = 'v', help = "verbose mode, shows which files are deleted.")]
     verbose: bool,
-    #[arg(short = 'h', long = "help")]
-    help: bool,
 }
 
 #[cfg(test)]
@@ -20,11 +18,6 @@ impl Options {
 }
 
 pub(crate) fn run(options: Options) -> AppResult<()> {
-    if options.help {
-        print_help();
-        return Ok(());
-    }
-
     let repo = Repo::discover()?;
     ensure_initialized(&repo)?;
     let secret_files = secret_files(repo.root())?;
@@ -85,28 +78,14 @@ fn repo_relative_path(repo_root: &Path, path: &Path) -> AppResult<String> {
     Ok(pieces.join("/"))
 }
 
-fn print_help() {
-    println!(
-        "git-secret-clean - deletes all files in the current git-secret repo that end with .secret.\n\
-\n\
-Usage:\n\
-  git secret clean [-v] [-h]\n\
-\n\
-Options:\n\
-  -v  verbose mode, shows which files are deleted\n\
-  -h  shows this help"
-    );
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn clean_options_parse_verbose_and_help() {
-        let options = Options::parse(vec!["-v".to_string(), "-h".to_string()]).unwrap();
+        let options = Options::parse(vec!["-v".to_string()]).unwrap();
         assert!(options.verbose);
-        assert!(options.help);
     }
 
     #[test]

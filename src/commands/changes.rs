@@ -10,8 +10,6 @@ use crate::AppResult;
 pub(crate) struct Options {
     #[command(flatten)]
     gpg: UserGpgOptions,
-    #[arg(short = 'h', long = "help")]
-    help: bool,
 }
 
 #[cfg(test)]
@@ -22,11 +20,6 @@ impl Options {
 }
 
 pub(crate) fn run(options: Options) -> AppResult<()> {
-    if options.help {
-        print_help();
-        return Ok(());
-    }
-
     let repo = Repo::discover()?;
     ensure_initialized(&repo)?;
     let mapping = Mapping::load(&repo)?;
@@ -89,20 +82,6 @@ fn decrypt_secret(gpg: &UserGpgOptions, secret: &Path) -> AppResult<Vec<u8>> {
     }
 }
 
-fn print_help() {
-    println!(
-        "git-secret-changes - shows changes between the current versions of secret files and encrypted versions.\n\
-\n\
-Usage:\n\
-  git secret changes [-d <gpg-homedir>] [-p <password>] [-h]\n\
-\n\
-Options:\n\
-  -d  specifies --homedir option for gpg\n\
-  -p  specifies password for noinput mode, adds --passphrase option for gpg\n\
-  -h  shows this help"
-    );
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -115,13 +94,11 @@ mod tests {
             "keys".to_string(),
             "-p".to_string(),
             "secret".to_string(),
-            "-h".to_string(),
         ])
         .unwrap();
 
         assert_eq!(options.gpg.homedir, Some(PathBuf::from("keys")));
         assert_eq!(options.gpg.passphrase, Some("secret".to_string()));
-        assert!(options.help);
     }
 
     #[test]

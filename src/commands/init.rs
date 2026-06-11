@@ -12,10 +12,7 @@ const ROOT_GITIGNORE_ENTRIES: &[&str] = &[
 const ROOT_GITATTRIBUTES_ENTRIES: &[&str] = &["*.secret diff=git-secret"];
 
 #[derive(clap::Args)]
-pub(crate) struct Options {
-    #[arg(short = 'h', long = "help")]
-    help: bool,
-}
+pub(crate) struct Options {}
 
 #[cfg(test)]
 impl Options {
@@ -25,10 +22,7 @@ impl Options {
 }
 
 pub(crate) fn run(options: Options) -> AppResult<()> {
-    if options.help {
-        print_help();
-        return Ok(());
-    }
+    let _ = options;
 
     let repo = Repo::discover()?;
     fs::create_dir_all(repo.join(KEYS_DIR)).map_err(|e| format!("create {}: {}", KEYS_DIR, e))?;
@@ -92,26 +86,13 @@ fn configure_diff_driver() -> AppResult<()> {
         .status_ok("configure git-secret diff textconv")
 }
 
-fn print_help() {
-    println!(
-        "git-secret-init - initializes a git-secret repo by setting up a .gitsecret directory.\n\
-\n\
-Usage:\n\
-  git secret init [-h]\n\
-\n\
-Options:\n\
-  -h  shows this help"
-    );
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn init_options_parse_help() {
-        let options = Options::parse(vec!["-h".to_string()]).unwrap();
-        assert!(options.help);
+        assert!(Options::parse(vec!["-h".to_string()]).is_err());
     }
 
     #[test]

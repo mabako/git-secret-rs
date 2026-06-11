@@ -17,8 +17,8 @@ fn init_help_prints_usage_without_creating_gitsecret() {
             .current_dir(repo.path()),
     );
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("git-secret-init"));
-    assert!(stdout.contains("-h"));
+    assert!(stdout.contains("Usage:"));
+    assert!(stdout.contains("--help"));
     assert!(!repo.path().join(".gitsecret").exists());
 }
 
