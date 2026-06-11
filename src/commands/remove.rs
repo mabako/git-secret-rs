@@ -8,7 +8,7 @@ use crate::AppResult;
 
 #[derive(clap::Args)]
 pub(crate) struct Options {
-    #[arg(short = 'c', help = "deletes existing real encrypted files.")]
+    #[arg(short = 'c', help = "Deletes existing real encrypted files")]
     clean_encrypted: bool,
     #[arg(value_name = "filename")]
     paths: Vec<PathBuf>,

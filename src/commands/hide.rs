@@ -10,24 +10,21 @@ use crate::AppResult;
 
 #[derive(clap::Args)]
 pub(crate) struct Options {
-    #[arg(
-        short = 'c',
-        help = "deletes encrypted files before creating new ones."
-    )]
+    #[arg(short = 'c', help = "Deletes encrypted files before creating new ones")]
     clean_encrypted: bool,
     #[arg(
         short = 'F',
-        help = "forces hide to continue if a file to encrypt is missing."
+        help = "Forces hide to continue if a file to encrypt is missing"
     )]
     continue_missing: bool,
     #[arg(
         short = 'P',
-        help = "preserve permissions of unencrypted file in encrypted file."
+        help = "Preserve permissions of unencrypted file in encrypted file"
     )]
     preserve_permissions: bool,
-    #[arg(short = 'd', help = "deletes unencrypted files after encryption.")]
+    #[arg(short = 'd', help = "Deletes unencrypted files after encryption")]
     delete_plaintext: bool,
-    #[arg(short = 'm', help = "encrypt files only when modified.")]
+    #[arg(short = 'm', help = "Encrypt files only when modified")]
     modified_only: bool,
     #[arg(value_name = "filename")]
     paths: Vec<PathBuf>,

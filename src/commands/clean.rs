@@ -7,7 +7,7 @@ use crate::AppResult;
 
 #[derive(clap::Args)]
 pub(crate) struct Options {
-    #[arg(short = 'v', help = "verbose mode, shows which files are deleted.")]
+    #[arg(short = 'v', help = "Verbose mode, shows which files are deleted")]
     verbose: bool,
 }
 

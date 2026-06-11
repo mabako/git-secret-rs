@@ -9,13 +9,13 @@ use crate::AppResult;
 pub(crate) struct Options {
     #[arg(
         short = 'm',
-        help = "uses your current `git config user.email` setting as an identifier for the key."
+        help = "Uses your current `git config user.email` setting as an identifier for the key"
     )]
     use_git_email: bool,
     #[arg(
         short = 'd',
         value_name = "gpg-homedir",
-        help = "specifies `--homedir` option for `gpg`, basically use this option if your store your keys in a custom location."
+        help = "Specifies `--homedir` option for `gpg`, basically use this option if your store your keys in a custom location"
     )]
     gpg_homedir: Option<PathBuf>,
     #[arg(value_name = "email-or-fingerprint")]

@@ -123,3 +123,38 @@ enum Command {
     Usage,
     Version,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::Command as ClapCommand;
+
+    #[test]
+    fn option_help_texts_start_with_capital_letter_and_have_no_period() {
+        assert_option_help_style(&Cli::command());
+    }
+
+    fn assert_option_help_style(command: &ClapCommand) {
+        for arg in command.get_arguments() {
+            if let Some(help) = arg.get_help() {
+                let help = help.to_string();
+                assert!(
+                    help.chars().next().is_some_and(char::is_uppercase),
+                    "{} option help should start with a capital letter: {}",
+                    arg.get_id(),
+                    help
+                );
+                assert!(
+                    !help.ends_with('.'),
+                    "{} option help should not end with a period: {}",
+                    arg.get_id(),
+                    help
+                );
+            }
+        }
+
+        for subcommand in command.get_subcommands() {
+            assert_option_help_style(subcommand);
+        }
+    }
+}

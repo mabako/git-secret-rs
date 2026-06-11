@@ -11,19 +11,19 @@ use crate::AppResult;
 pub(crate) struct Options {
     #[arg(
         short = 'f',
-        help = "forces gpg to overwrite existing files without prompt."
+        help = "Forces gpg to overwrite existing files without prompt"
     )]
     force: bool,
     #[arg(
         short = 'F',
-        help = "forces reveal to continue even if a file fails to decrypt."
+        help = "Forces reveal to continue even if a file fails to decrypt"
     )]
     continue_on_error: bool,
-    #[arg(short = 'v', help = "verbose, shows extra information.")]
+    #[arg(short = 'v', help = "Verbose, shows extra information")]
     verbose: bool,
     #[arg(
         short = 'P',
-        help = "preserve permissions of encrypted file in unencrypted file."
+        help = "Preserve permissions of encrypted file in unencrypted file"
     )]
     preserve_permissions: bool,
     #[command(flatten)]

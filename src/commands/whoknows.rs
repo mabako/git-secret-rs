@@ -3,7 +3,7 @@ use crate::AppResult;
 
 #[derive(clap::Args)]
 pub(crate) struct Options {
-    #[arg(short = 'l', help = "'long' output, shows key expiration dates.")]
+    #[arg(short = 'l', help = "Long output, shows key expiration dates")]
     long: bool,
 }
 
