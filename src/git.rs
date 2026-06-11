@@ -10,6 +10,11 @@ pub(crate) const PATHS_DIR: &str = ".gitsecret/paths";
 pub(crate) const MAPPING_FILE: &str = ".gitsecret/paths/mapping.cfg";
 pub(crate) const GPG_PASSPHRASE_ENV: &str = "GIT_SECRET_GPG_PASSPHRASE";
 
+pub(crate) struct RecipientRecord {
+    pub(crate) uid: String,
+    pub(crate) expires: String,
+}
+
 pub(crate) struct Repo {
     root: PathBuf,
 }
@@ -91,7 +96,7 @@ pub(crate) fn recipient_key_ids(repo: &Repo) -> AppResult<Vec<String>> {
     Ok(recipients)
 }
 
-pub(crate) fn recipient_ids(repo: &Repo) -> AppResult<Vec<String>> {
+pub(crate) fn recipient_records(repo: &Repo) -> AppResult<Vec<RecipientRecord>> {
     let output = repo_gpg(repo)
         .arg("--with-colons")
         .arg("--list-keys")
@@ -104,16 +109,79 @@ pub(crate) fn recipient_ids(repo: &Repo) -> AppResult<Vec<String>> {
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let mut recipients = Vec::new();
+    let mut current_expiration = "never".to_string();
     for line in stdout.lines() {
         let fields: Vec<&str> = line.split(':').collect();
-        if fields.first() == Some(&"uid") {
-            if let Some(uid) = fields.get(9) {
-                if !uid.is_empty() {
-                    recipients.push((*uid).to_string());
+        match fields.first().copied() {
+            Some("pub") => {
+                current_expiration = fields
+                    .get(6)
+                    .and_then(|expires| format_gpg_expiration(expires))
+                    .unwrap_or_else(|| "never".to_string());
+            }
+            Some("uid") => {
+                if let Some(uid) = fields.get(9) {
+                    if !uid.is_empty() {
+                        recipients.push(RecipientRecord {
+                            uid: (*uid).to_string(),
+                            expires: current_expiration.clone(),
+                        });
+                    }
                 }
             }
+            _ => {}
         }
     }
 
     Ok(recipients)
+}
+
+fn format_gpg_expiration(value: &str) -> Option<String> {
+    if value.is_empty() {
+        return None;
+    }
+
+    value
+        .parse::<i64>()
+        .ok()
+        .map(|timestamp| format_unix_date(timestamp))
+}
+
+fn format_unix_date(timestamp: i64) -> String {
+    let days = timestamp.div_euclid(86_400);
+    let (year, month, day) = civil_from_days(days);
+    format!("{:04}-{:02}-{:02}", year, month, day)
+}
+
+fn civil_from_days(days_since_epoch: i64) -> (i32, u32, u32) {
+    let z = days_since_epoch + 719_468;
+    let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
+    let year = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let day = doy - (153 * mp + 2) / 5 + 1;
+    let month = mp + if mp < 10 { 3 } else { -9 };
+    let year = year + if month <= 2 { 1 } else { 0 };
+
+    (year as i32, month as u32, day as u32)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn format_gpg_expiration_handles_empty_values() {
+        assert_eq!(format_gpg_expiration(""), None);
+    }
+
+    #[test]
+    fn format_gpg_expiration_formats_unix_dates() {
+        assert_eq!(
+            format_gpg_expiration("1453490413"),
+            Some("2016-01-22".to_string())
+        );
+    }
 }

@@ -46,6 +46,27 @@ fn tell_and_removeperson_accept_fingerprint() {
         String::from_utf8_lossy(&whoknows.stdout)
     );
 
+    let whoknows_long = run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("whoknows")
+            .arg("-l")
+            .current_dir(repo.path()),
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&whoknows_long.stdout).trim(),
+        format!("{}\tnever", USER1_UID)
+    );
+
+    let whoknows_help = run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("whoknows")
+            .arg("-h"),
+    );
+    let whoknows_help = String::from_utf8_lossy(&whoknows_help.stdout);
+    assert!(whoknows_help.contains("git-secret-whoknows"));
+    assert!(whoknows_help.contains("-l"));
+    assert!(whoknows_help.contains("-h"));
+
     run_success(
         Command::new(env!("CARGO_BIN_EXE_git-secret"))
             .arg("removeperson")
