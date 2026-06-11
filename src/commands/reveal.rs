@@ -1,14 +1,21 @@
 use std::fs;
 use std::path::PathBuf;
 
+use crate::crypto::sha256_file;
 use crate::git::{ensure_initialized, user_gpg, Repo, UserGpgOptions};
-use crate::mapping::Mapping;
+use crate::mapping::{Mapping, MappingEntry};
 use crate::paths::{encrypted_path, selected_paths};
 use crate::process::CommandExt;
 use crate::AppResult;
 
 #[derive(clap::Args)]
 pub(crate) struct Options {
+    #[arg(
+        short = 'a',
+        long = "always-decrypt",
+        help = "Always decrypt files, ignoring checksums"
+    )]
+    always_decrypt: bool,
     #[arg(
         short = 'f',
         help = "Forces gpg to overwrite existing files without prompt"
@@ -40,6 +47,7 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
     let verbose = options.verbose || super::secrets_verbose();
 
     for path in paths {
+        let entry = mapping.entries.iter().find(|entry| entry.path == path);
         let input = encrypted_path(&repo, &path);
         let output = repo.join(&path);
 
@@ -51,7 +59,15 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
             }
             return Err(error);
         }
-        if output.exists() && !options.force {
+        if !options.always_decrypt && plaintext_matches_mapping(entry, &output)? {
+            if verbose {
+                println!("unchanged {} from {}", path, input.display());
+            } else {
+                println!("unchanged {}", path);
+            }
+            continue;
+        }
+        if output.exists() && !(options.force || options.always_decrypt) {
             let error = format!("{} already exists; pass -f to overwrite", output.display());
             if options.continue_on_error {
                 eprintln!("skipped {}: {}", path, error);
@@ -71,7 +87,7 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
             .permissions();
         let mut command = user_gpg(&options.gpg);
         command.arg("--batch");
-        if options.force {
+        if options.force || options.always_decrypt {
             command.arg("--yes");
         }
         let result = command
@@ -101,6 +117,20 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
     Ok(())
 }
 
+fn plaintext_matches_mapping(
+    entry: Option<&MappingEntry>,
+    output: &std::path::Path,
+) -> AppResult<bool> {
+    let Some(entry) = entry else {
+        return Ok(false);
+    };
+    if entry.sha256.is_empty() || !output.is_file() {
+        return Ok(false);
+    }
+
+    Ok(sha256_file(output)? == entry.sha256)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -114,17 +144,25 @@ mod tests {
     fn reveal_options_parse_all_supported_flags() {
         let matches = command()
             .try_get_matches_from([
-                "reveal", "-f", "-F", "-d", "keys", "-v", "-p", "secret", "-P", "file.txt",
+                "reveal", "-a", "-f", "-F", "-d", "keys", "-v", "-p", "secret", "-P", "file.txt",
             ])
             .unwrap();
         let options = Options::from_arg_matches(&matches).unwrap();
 
+        assert!(options.always_decrypt);
         assert!(options.force);
         assert!(options.continue_on_error);
         assert!(options.verbose);
         assert!(options.preserve_permissions);
         assert_eq!(options.gpg.homedir, Some(PathBuf::from("keys")));
         assert_eq!(options.gpg.passphrase, Some("secret".to_string()));
+        assert_eq!(options.paths, vec![PathBuf::from("file.txt")]);
+
+        let matches = command()
+            .try_get_matches_from(["reveal", "--always-decrypt", "file.txt"])
+            .unwrap();
+        let options = Options::from_arg_matches(&matches).unwrap();
+        assert!(options.always_decrypt);
         assert_eq!(options.paths, vec![PathBuf::from("file.txt")]);
     }
 

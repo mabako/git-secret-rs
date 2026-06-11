@@ -260,6 +260,33 @@ fn hide_and_reveal_round_trip_with_supplied_keys() {
         fs::read_to_string(&secret_path).expect("revealed plaintext should be readable"),
         "the launch code changed"
     );
+    let reveal_unchanged = run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("reveal")
+            .arg("-d")
+            .arg(user_gpg_home.path())
+            .arg("-p")
+            .arg(KEY_PASSPHRASE)
+            .current_dir(repo.path()),
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&reveal_unchanged.stdout).trim(),
+        "unchanged secret.txt"
+    );
+    let reveal_always_decrypt = run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("reveal")
+            .arg("-a")
+            .arg("-d")
+            .arg(user_gpg_home.path())
+            .arg("-p")
+            .arg(KEY_PASSPHRASE)
+            .current_dir(repo.path()),
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&reveal_always_decrypt.stdout).trim(),
+        "decrypted secret.txt"
+    );
 
     let hide_help = run_success(
         Command::new(env!("CARGO_BIN_EXE_git-secret"))
@@ -282,6 +309,8 @@ fn hide_and_reveal_round_trip_with_supplied_keys() {
     );
     let reveal_help = String::from_utf8_lossy(&reveal_help.stdout);
     assert!(reveal_help.contains("Usage:"));
+    assert!(reveal_help.contains("-a"));
+    assert!(reveal_help.contains("--always-decrypt"));
     assert!(reveal_help.contains("-f"));
     assert!(reveal_help.contains("-F"));
     assert!(reveal_help.contains("-d"));
