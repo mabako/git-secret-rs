@@ -11,7 +11,31 @@ const ROOT_GITIGNORE_ENTRIES: &[&str] = &[
 ];
 const ROOT_GITATTRIBUTES_ENTRIES: &[&str] = &["*.secret diff=git-secret"];
 
-pub(crate) fn run() -> AppResult<()> {
+pub(crate) struct Options {
+    help: bool,
+}
+
+impl Options {
+    pub(crate) fn parse(args: Vec<String>) -> AppResult<Self> {
+        let mut help = false;
+
+        for arg in args {
+            match arg.as_str() {
+                "-h" | "--help" => help = true,
+                _ => return Err(format!("unknown init option '{}'", arg)),
+            }
+        }
+
+        Ok(Self { help })
+    }
+}
+
+pub(crate) fn run(options: Options) -> AppResult<()> {
+    if options.help {
+        print_help();
+        return Ok(());
+    }
+
     let repo = Repo::discover()?;
     fs::create_dir_all(repo.join(KEYS_DIR)).map_err(|e| format!("create {}: {}", KEYS_DIR, e))?;
     fs::create_dir_all(repo.join(PATHS_DIR)).map_err(|e| format!("create {}: {}", PATHS_DIR, e))?;
@@ -72,4 +96,32 @@ fn configure_diff_driver() -> AppResult<()> {
         .arg("diff.git-secret.textconv")
         .arg("git-secret textconv")
         .status_ok("configure git-secret diff textconv")
+}
+
+fn print_help() {
+    println!(
+        "git-secret-init - initializes a git-secret repo by setting up a .gitsecret directory.\n\
+\n\
+Usage:\n\
+  git secret init [-h]\n\
+\n\
+Options:\n\
+  -h  shows this help"
+    );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn init_options_parse_help() {
+        let options = Options::parse(vec!["-h".to_string()]).unwrap();
+        assert!(options.help);
+    }
+
+    #[test]
+    fn init_options_reject_unknown_flags() {
+        assert!(Options::parse(vec!["-v".to_string()]).is_err());
+    }
 }

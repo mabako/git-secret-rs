@@ -6,8 +6,34 @@ use crate::mapping::Mapping;
 use crate::paths::normalize_secret_path_for_repo;
 use crate::AppResult;
 
-pub(crate) fn run(paths: Vec<PathBuf>) -> AppResult<()> {
-    if paths.is_empty() {
+pub(crate) struct Options {
+    paths: Vec<PathBuf>,
+    help: bool,
+}
+
+impl Options {
+    pub(crate) fn parse(args: Vec<String>) -> AppResult<Self> {
+        let mut paths = Vec::new();
+        let mut help = false;
+
+        for arg in args {
+            match arg.as_str() {
+                "-h" | "--help" => help = true,
+                _ if arg.starts_with('-') => return Err(format!("unknown add option '{}'", arg)),
+                _ => paths.push(PathBuf::from(arg)),
+            }
+        }
+
+        Ok(Self { paths, help })
+    }
+}
+
+pub(crate) fn run(options: Options) -> AppResult<()> {
+    if options.help {
+        print_help();
+        return Ok(());
+    }
+    if options.paths.is_empty() {
         return Err("add requires at least one file".to_string());
     }
 
@@ -16,7 +42,7 @@ pub(crate) fn run(paths: Vec<PathBuf>) -> AppResult<()> {
     let mut mapping = Mapping::load(&repo)?;
     let mut added = 0;
 
-    for path in paths {
+    for path in options.paths {
         let normalized = normalize_secret_path_for_repo(&repo, &path)?;
         let plaintext = repo.join(&normalized);
         if !plaintext.is_file() {
@@ -56,4 +82,33 @@ fn add_to_gitignore(repo: &Repo, path: &str) -> AppResult<()> {
     updated.push('\n');
 
     fs::write(&gitignore, updated).map_err(|e| format!("write {}: {}", gitignore.display(), e))
+}
+
+fn print_help() {
+    println!(
+        "git secret add - tells git secret which files hold secrets.\n\
+\n\
+Usage:\n\
+  git secret add [-h] <file> [file...]\n\
+\n\
+Options:\n\
+  -h  shows this help"
+    );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn add_options_parse_help_and_paths() {
+        let options = Options::parse(vec!["-h".to_string(), "file.txt".to_string()]).unwrap();
+        assert!(options.help);
+        assert_eq!(options.paths, vec![PathBuf::from("file.txt")]);
+    }
+
+    #[test]
+    fn add_options_reject_unknown_flags() {
+        assert!(Options::parse(vec!["-d".to_string()]).is_err());
+    }
 }

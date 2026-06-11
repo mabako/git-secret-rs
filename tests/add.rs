@@ -47,6 +47,24 @@ fn add_tracks_secret_and_ignores_plaintext_file() {
     let mapping = fs::read_to_string(repo.path().join(".gitsecret/paths/mapping.cfg"))
         .expect("mapping should be readable");
     assert_eq!(mapping, "config/secret.env:\n");
+
+    let add_help = run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("add")
+            .arg("-h"),
+    );
+    let add_help = String::from_utf8_lossy(&add_help.stdout);
+    assert!(add_help.contains("git secret add"));
+    assert!(add_help.contains("-h"));
+
+    let list_help = run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("list")
+            .arg("-h"),
+    );
+    let list_help = String::from_utf8_lossy(&list_help.stdout);
+    assert!(list_help.contains("git secret list"));
+    assert!(list_help.contains("-h"));
 }
 
 #[test]

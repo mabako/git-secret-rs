@@ -30,19 +30,19 @@ pub(crate) fn run(args: Vec<OsString>) -> AppResult<()> {
             println!("git-secret-rs {}", env!("CARGO_PKG_VERSION"));
             Ok(())
         }
-        "init" => init::run(),
+        "init" => init::run(init::Options::parse(args.rest_strings()?)?),
         "tell" => tell::run(tell::Options::parse(args.rest_strings()?)?).map(|_| ()),
         "whoknows" => whoknows::run(whoknows::Options::parse(args.rest_strings()?)?),
         "killperson" | "removeperson" => remove_person::run(args.rest_strings()?),
-        "add" => add::run(args.rest_paths()?),
+        "add" => add::run(add::Options::parse(args.rest_strings()?)?),
         "remove" => remove::run(args.rest_paths()?),
-        "list" => list::run(),
+        "list" => list::run(list::Options::parse(args.rest_strings()?)?),
         "hide" => hide::run(hide::Options::parse(args.rest_strings()?)?),
         "reveal" => reveal::run(reveal::Options::parse(args.rest_strings()?)?),
         "cat" => cat::run(cat::Options::parse(args.rest_strings()?)?),
         "textconv" => textconv::run(textconv::Options::parse(args.rest_strings()?)?),
-        "clean" => clean::run(args.rest_paths()?),
-        "changes" => changes::run(),
+        "clean" => clean::run(clean::Options::parse(args.rest_strings()?)?),
+        "changes" => changes::run(changes::Options::parse(args.rest_strings()?)?),
         unknown => Err(format!(
             "unknown command '{}'; run 'git secret usage' for help",
             unknown
@@ -55,18 +55,18 @@ fn print_usage() {
         "git-secret-rs {}\n\
 \n\
 Usage:\n\
-  git secret init\n\
+  git secret init [-h]\n\
   git secret tell [-m] [-d <gpg-homedir>] [fingerprint-or-key-id-or-email]...\n\
   git secret whoknows [-l|-h]\n\
   git secret removeperson <fingerprint-or-key-id-or-email>...\n\
-  git secret add <file>...\n\
+  git secret add [-h] <file>...\n\
   git secret remove <file>...\n\
-  git secret list\n\
+  git secret list [-h]\n\
   git secret hide [-c] [-F] [-P] [-d] [-m] [-h] [file...]\n\
   git secret reveal [-f] [-F] [-d <gpg-homedir>] [-v] [-p <password>] [-P] [-h] [file...]\n\
   git secret cat [-d <gpg-homedir>] [-p <password>] <file> [file...]\n\
-  git secret clean [file...]\n\
-  git secret changes",
+  git secret clean [-v] [-h]\n\
+  git secret changes [-d <gpg-homedir>] [-p <password>] [-h]",
         env!("CARGO_PKG_VERSION")
     );
 }

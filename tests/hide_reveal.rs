@@ -134,6 +134,35 @@ fn hide_and_reveal_round_trip_with_supplied_keys() {
     );
     assert_eq!(String::from_utf8_lossy(&textconv_output.stderr), "");
 
+    let changes_output = run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("changes")
+            .arg("-d")
+            .arg(user_gpg_home.path())
+            .arg("-p")
+            .arg(KEY_PASSPHRASE)
+            .current_dir(repo.path()),
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&changes_output.stdout).trim(),
+        "no changes"
+    );
+
+    fs::write(&secret_path, "the launch code drifted").expect("plaintext secret should be updated");
+    let changes_output = run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("changes")
+            .arg("-d")
+            .arg(user_gpg_home.path())
+            .arg("-p")
+            .arg(KEY_PASSPHRASE)
+            .current_dir(repo.path()),
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&changes_output.stdout).trim(),
+        "modified\tsecret.txt"
+    );
+
     let cat_help = run_success(
         Command::new(env!("CARGO_BIN_EXE_git-secret"))
             .arg("cat")
@@ -144,6 +173,16 @@ fn hide_and_reveal_round_trip_with_supplied_keys() {
     assert!(cat_help.contains("-d"));
     assert!(cat_help.contains("-p"));
     assert!(cat_help.contains("-h"));
+    let changes_help = run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("changes")
+            .arg("-h"),
+    );
+    let changes_help = String::from_utf8_lossy(&changes_help.stdout);
+    assert!(changes_help.contains("git-secret-changes"));
+    assert!(changes_help.contains("-d"));
+    assert!(changes_help.contains("-p"));
+    assert!(changes_help.contains("-h"));
 
     fs::remove_file(&secret_path).expect("plaintext should be removed before reveal");
     run_success(

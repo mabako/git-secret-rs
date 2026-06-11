@@ -2,7 +2,31 @@ use crate::git::{ensure_initialized, Repo};
 use crate::mapping::Mapping;
 use crate::AppResult;
 
-pub(crate) fn run() -> AppResult<()> {
+pub(crate) struct Options {
+    help: bool,
+}
+
+impl Options {
+    pub(crate) fn parse(args: Vec<String>) -> AppResult<Self> {
+        let mut help = false;
+
+        for arg in args {
+            match arg.as_str() {
+                "-h" | "--help" => help = true,
+                _ => return Err(format!("unknown list option '{}'", arg)),
+            }
+        }
+
+        Ok(Self { help })
+    }
+}
+
+pub(crate) fn run(options: Options) -> AppResult<()> {
+    if options.help {
+        print_help();
+        return Ok(());
+    }
+
     let repo = Repo::discover()?;
     ensure_initialized(&repo)?;
 
@@ -11,4 +35,32 @@ pub(crate) fn run() -> AppResult<()> {
     }
 
     Ok(())
+}
+
+fn print_help() {
+    println!(
+        "git secret list - print the files currently considered secret in this repo\n\
+\n\
+Usage:\n\
+  git secret list [-h]\n\
+\n\
+Options:\n\
+  -h  shows this help"
+    );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn list_options_parse_help() {
+        let options = Options::parse(vec!["-h".to_string()]).unwrap();
+        assert!(options.help);
+    }
+
+    #[test]
+    fn list_options_reject_unknown_flags() {
+        assert!(Options::parse(vec!["-v".to_string()]).is_err());
+    }
 }
