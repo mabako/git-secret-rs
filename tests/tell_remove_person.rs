@@ -68,6 +68,15 @@ fn tell_and_removeperson_accept_fingerprint() {
     assert!(whoknows_help.contains("-l"));
     assert!(whoknows_help.contains("-h"));
 
+    let removeperson_help = run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("removeperson")
+            .arg("-h"),
+    );
+    let removeperson_help = String::from_utf8_lossy(&removeperson_help.stdout);
+    assert!(removeperson_help.contains("git-secret-removeperson"));
+    assert!(removeperson_help.contains("-h"));
+
     run_success(
         Command::new(env!("CARGO_BIN_EXE_git-secret"))
             .arg("removeperson")
