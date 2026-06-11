@@ -18,6 +18,8 @@ mod tell;
 mod textconv;
 mod whoknows;
 
+const SECRETS_VERBOSE_ENV: &str = "SECRETS_VERBOSE";
+
 pub(crate) fn run(args: Vec<OsString>) -> AppResult<()> {
     let cli = match Cli::try_parse_from(std::iter::once(OsString::from("git-secret")).chain(args)) {
         Ok(cli) => cli,
@@ -56,6 +58,10 @@ pub(crate) fn run(args: Vec<OsString>) -> AppResult<()> {
         Command::Changes(options) => changes::run(options),
         Command::Help | Command::Usage | Command::Version => unreachable!(),
     }
+}
+
+pub(crate) fn secrets_verbose() -> bool {
+    std::env::var_os(SECRETS_VERBOSE_ENV).is_some()
 }
 
 #[derive(Parser)]

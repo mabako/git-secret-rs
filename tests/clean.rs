@@ -46,6 +46,16 @@ fn clean_deletes_secret_files_quietly_unless_verbose() {
     assert!(verbose.contains("removed root.txt.secret"));
     assert!(verbose.contains("removed nested/nested.txt.secret"));
 
+    fs::write(&root_secret, "encrypted root").expect("root secret should be written again");
+    let env_verbose = run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("clean")
+            .env("SECRETS_VERBOSE", "1")
+            .current_dir(repo.path()),
+    );
+    let env_verbose = String::from_utf8_lossy(&env_verbose.stdout);
+    assert!(env_verbose.contains("removed root.txt.secret"));
+
     let help = run_success(
         Command::new(env!("CARGO_BIN_EXE_git-secret"))
             .arg("clean")

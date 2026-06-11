@@ -198,15 +198,20 @@ fn hide_and_reveal_round_trip_with_supplied_keys() {
             .arg("missing.txt")
             .current_dir(repo.path()),
     );
-    run_success(
+    let reveal_output = run_success(
         Command::new(env!("CARGO_BIN_EXE_git-secret"))
             .arg("reveal")
             .arg("-d")
             .arg(user_gpg_home.path())
             .arg("-p")
             .arg(KEY_PASSPHRASE)
-            .arg("-v")
+            .env("SECRETS_VERBOSE", "1")
             .current_dir(repo.path()),
+    );
+    assert!(
+        String::from_utf8_lossy(&reveal_output.stdout).contains("decrypted secret.txt from"),
+        "SECRETS_VERBOSE should enable verbose reveal output:\n{}",
+        String::from_utf8_lossy(&reveal_output.stdout)
     );
 
     assert_eq!(

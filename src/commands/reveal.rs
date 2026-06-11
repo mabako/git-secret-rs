@@ -37,6 +37,7 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
     ensure_initialized(&repo)?;
     let mapping = Mapping::load(&repo)?;
     let paths = selected_paths(&repo, &mapping, options.paths)?;
+    let verbose = options.verbose || super::secrets_verbose();
 
     for path in paths {
         let input = encrypted_path(&repo, &path);
@@ -90,7 +91,7 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
             fs::set_permissions(&output, encrypted_permissions)
                 .map_err(|e| format!("set permissions on {}: {}", output.display(), e))?;
         }
-        if options.verbose {
+        if verbose {
             println!("decrypted {} from {}", path, input.display());
         } else {
             println!("decrypted {}", path);

@@ -14,10 +14,11 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
     let repo = Repo::discover()?;
     ensure_initialized(&repo)?;
     let secret_files = secret_files(repo.root())?;
+    let verbose = options.verbose || super::secrets_verbose();
 
     for path in secret_files {
         fs::remove_file(&path).map_err(|e| format!("remove {}: {}", path.display(), e))?;
-        if options.verbose {
+        if verbose {
             println!("removed {}", repo_relative_path(repo.root(), &path)?);
         }
     }
