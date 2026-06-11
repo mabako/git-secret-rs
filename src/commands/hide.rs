@@ -81,6 +81,9 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
             .arg("--trust-model")
             .arg("always")
             .arg("--encrypt");
+        if super::secrets_gpg_armor() {
+            cmd.arg("--armor");
+        }
         for recipient in &recipients {
             cmd.arg("--recipient").arg(recipient);
         }

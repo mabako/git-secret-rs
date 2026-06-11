@@ -19,6 +19,7 @@ mod textconv;
 mod whoknows;
 
 const SECRETS_VERBOSE_ENV: &str = "SECRETS_VERBOSE";
+const SECRETS_GPG_ARMOR_ENV: &str = "SECRETS_GPG_ARMOR";
 
 pub(crate) fn run(args: Vec<OsString>) -> AppResult<()> {
     let cli = match Cli::try_parse_from(std::iter::once(OsString::from("git-secret")).chain(args)) {
@@ -62,6 +63,10 @@ pub(crate) fn run(args: Vec<OsString>) -> AppResult<()> {
 
 pub(crate) fn secrets_verbose() -> bool {
     std::env::var_os(SECRETS_VERBOSE_ENV).is_some()
+}
+
+pub(crate) fn secrets_gpg_armor() -> bool {
+    std::env::var_os(SECRETS_GPG_ARMOR_ENV).is_some_and(|value| value == "1")
 }
 
 #[derive(Parser)]

@@ -103,6 +103,20 @@ fn hide_and_reveal_round_trip_with_supplied_keys() {
         b"the launch code changed"
     );
 
+    run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("hide")
+            .arg("-c")
+            .env("SECRETS_GPG_ARMOR", "1")
+            .current_dir(repo.path()),
+    );
+    let armored = fs::read_to_string(&encrypted_path).expect("armored secret should be text");
+    assert!(
+        armored.starts_with("-----BEGIN PGP MESSAGE-----"),
+        "SECRETS_GPG_ARMOR=1 should write armored encrypted output:\n{}",
+        armored
+    );
+
     let cat_output = run_success(
         Command::new(env!("CARGO_BIN_EXE_git-secret"))
             .arg("cat")
