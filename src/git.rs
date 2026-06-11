@@ -8,7 +8,7 @@ pub(crate) const SECRET_DIR: &str = ".gitsecret";
 pub(crate) const KEYS_DIR: &str = ".gitsecret/keys";
 pub(crate) const PATHS_DIR: &str = ".gitsecret/paths";
 pub(crate) const MAPPING_FILE: &str = ".gitsecret/paths/mapping.cfg";
-const MINGW64_GPG: &str = r"C:\Program Files (x86)\GnuPG\bin\gpg.exe";
+const PROGRAM_FILES_X86_ENV: &str = "ProgramFiles(x86)";
 
 pub(crate) struct RecipientRecord {
     pub(crate) uid: String,
@@ -80,14 +80,21 @@ pub(crate) fn user_gpg(options: &UserGpgOptions) -> Command {
 }
 
 pub(crate) fn gpg_command() -> Command {
-    Command::new(gpg_program_for_msystem(env::var("MSYSTEM").ok().as_deref()))
+    let program_files_x86 = env::var_os(PROGRAM_FILES_X86_ENV).map(PathBuf::from);
+    Command::new(gpg_program_for_env(
+        env::var("MSYSTEM").ok().as_deref(),
+        program_files_x86.as_deref(),
+    ))
 }
 
-fn gpg_program_for_msystem(msystem: Option<&str>) -> &'static str {
-    match msystem {
-        Some("MINGW64") => MINGW64_GPG,
-        _ => "gpg",
+fn gpg_program_for_env(msystem: Option<&str>, program_files_x86: Option<&Path>) -> PathBuf {
+    if msystem == Some("MINGW64") {
+        if let Some(program_files_x86) = program_files_x86 {
+            return program_files_x86.join("GnuPG").join("bin").join("gpg.exe");
+        }
     }
+
+    PathBuf::from("gpg")
 }
 
 pub(crate) fn recipient_key_ids(repo: &Repo) -> AppResult<Vec<String>> {
@@ -208,15 +215,31 @@ mod tests {
 
     #[test]
     fn gpg_program_uses_original_gnupg_under_mingw64() {
+        let program_files_x86 = Path::new(r"C:\ProgramFilesX86");
+
         assert_eq!(
-            gpg_program_for_msystem(Some("MINGW64")),
-            r"C:\Program Files (x86)\GnuPG\bin\gpg.exe"
+            gpg_program_for_env(Some("MINGW64"), Some(program_files_x86)),
+            program_files_x86.join("GnuPG").join("bin").join("gpg.exe")
+        );
+    }
+
+    #[test]
+    fn gpg_program_uses_path_lookup_without_program_files_x86() {
+        assert_eq!(
+            gpg_program_for_env(Some("MINGW64"), None),
+            PathBuf::from("gpg")
         );
     }
 
     #[test]
     fn gpg_program_uses_path_lookup_outside_mingw64() {
-        assert_eq!(gpg_program_for_msystem(None), "gpg");
-        assert_eq!(gpg_program_for_msystem(Some("MSYS")), "gpg");
+        assert_eq!(
+            gpg_program_for_env(None, Some(Path::new(r"C:\ProgramFilesX86"))),
+            PathBuf::from("gpg")
+        );
+        assert_eq!(
+            gpg_program_for_env(Some("MSYS"), Some(Path::new(r"C:\ProgramFilesX86"))),
+            PathBuf::from("gpg")
+        );
     }
 }

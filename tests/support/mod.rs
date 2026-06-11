@@ -73,10 +73,18 @@ pub(crate) fn run_success(command: &mut Command) -> Output {
 }
 
 pub(crate) fn gpg_command() -> Command {
-    Command::new(match std::env::var("MSYSTEM").ok().as_deref() {
-        Some("MINGW64") => r"C:\Program Files (x86)\GnuPG\bin\gpg.exe",
-        _ => "gpg",
-    })
+    if std::env::var("MSYSTEM").ok().as_deref() == Some("MINGW64") {
+        if let Some(program_files_x86) = std::env::var_os("ProgramFiles(x86)") {
+            return Command::new(
+                PathBuf::from(program_files_x86)
+                    .join("GnuPG")
+                    .join("bin")
+                    .join("gpg.exe"),
+            );
+        }
+    }
+
+    Command::new("gpg")
 }
 
 pub(crate) fn fixture_path(path: &str) -> PathBuf {
