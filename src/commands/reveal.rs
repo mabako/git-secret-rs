@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use crate::git::{ensure_initialized, gpg, Repo};
+use crate::git::{ensure_initialized, gpg_with_configured_passphrase, Repo};
 use crate::mapping::Mapping;
 use crate::paths::{encrypted_path, selected_paths};
 use crate::process::CommandExt;
@@ -56,7 +56,7 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
                 .map_err(|e| format!("create {}: {}", parent.display(), e))?;
         }
 
-        gpg(&repo)
+        gpg_with_configured_passphrase(&repo)
             .arg("--batch")
             .arg("--yes")
             .arg("--decrypt")

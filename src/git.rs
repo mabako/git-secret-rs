@@ -1,3 +1,4 @@
+use std::env;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
@@ -7,6 +8,7 @@ pub(crate) const SECRET_DIR: &str = ".gitsecret";
 pub(crate) const KEYS_DIR: &str = ".gitsecret/keys";
 pub(crate) const PATHS_DIR: &str = ".gitsecret/paths";
 pub(crate) const MAPPING_FILE: &str = ".gitsecret/paths/mapping.cfg";
+pub(crate) const GPG_PASSPHRASE_ENV: &str = "GIT_SECRET_GPG_PASSPHRASE";
 
 pub(crate) struct Repo {
     root: PathBuf,
@@ -47,6 +49,18 @@ pub(crate) fn ensure_initialized(repo: &Repo) -> AppResult<()> {
 pub(crate) fn gpg(repo: &Repo) -> Command {
     let mut command = Command::new("gpg");
     command.arg("--homedir").arg(repo.join(KEYS_DIR));
+    command
+}
+
+pub(crate) fn gpg_with_configured_passphrase(repo: &Repo) -> Command {
+    let mut command = gpg(repo);
+    if let Some(passphrase) = env::var_os(GPG_PASSPHRASE_ENV) {
+        command
+            .arg("--pinentry-mode")
+            .arg("loopback")
+            .arg("--passphrase")
+            .arg(passphrase);
+    }
     command
 }
 
