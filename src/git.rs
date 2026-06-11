@@ -1,4 +1,5 @@
 use std::env;
+use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
@@ -11,6 +12,7 @@ const MAPPING_FILE_NAME: &str = "mapping.cfg";
 const PROGRAM_FILES_X86_ENV: &str = "ProgramFiles(x86)";
 const SECRETS_GPG_COMMAND_ENV: &str = "SECRETS_GPG_COMMAND";
 const SECRETS_DIR_ENV: &str = "SECRETS_DIR";
+const SECRETS_PINENTRY_ENV: &str = "SECRETS_PINENTRY";
 
 pub(crate) struct RecipientRecord {
     pub(crate) uid: String,
@@ -115,29 +117,48 @@ pub(crate) struct UserGpgOptions {
 }
 
 pub(crate) fn user_gpg(options: &UserGpgOptions) -> Command {
-    let mut command = gpg_command();
+    user_gpg_with_pinentry(options, secrets_pinentry().as_deref())
+}
+
+fn user_gpg_with_pinentry(options: &UserGpgOptions, pinentry: Option<&OsStr>) -> Command {
+    let mut command = gpg_command_with_pinentry(pinentry);
     command.arg("--quiet").arg("--no-tty");
     if let Some(homedir) = &options.homedir {
         command.arg("--homedir").arg(homedir);
     }
     if let Some(passphrase) = &options.passphrase {
-        command
-            .arg("--pinentry-mode")
-            .arg("loopback")
-            .arg("--passphrase")
-            .arg(passphrase);
+        if pinentry.is_none() {
+            add_pinentry_mode(&mut command, OsStr::new("loopback"));
+        }
+        command.arg("--passphrase").arg(passphrase);
     }
     command
 }
 
 pub(crate) fn gpg_command() -> Command {
+    gpg_command_with_pinentry(secrets_pinentry().as_deref())
+}
+
+fn gpg_command_with_pinentry(pinentry: Option<&OsStr>) -> Command {
     let program_files_x86 = env::var_os(PROGRAM_FILES_X86_ENV).map(PathBuf::from);
     let secrets_gpg_command = env::var_os(SECRETS_GPG_COMMAND_ENV).map(PathBuf::from);
-    Command::new(gpg_program_for_env(
+    let mut command = Command::new(gpg_program_for_env(
         secrets_gpg_command.as_deref(),
         env::var("MSYSTEM").ok().as_deref(),
         program_files_x86.as_deref(),
-    ))
+    ));
+    if let Some(pinentry) = pinentry {
+        add_pinentry_mode(&mut command, pinentry);
+    }
+    command
+}
+
+fn secrets_pinentry() -> Option<OsString> {
+    env::var_os(SECRETS_PINENTRY_ENV).filter(|value| !value.is_empty())
+}
+
+fn add_pinentry_mode(command: &mut Command, pinentry: &OsStr) {
+    command.arg("--pinentry-mode").arg(pinentry);
 }
 
 fn gpg_program_for_env(
@@ -260,6 +281,14 @@ fn civil_from_days(days_since_epoch: i64) -> (i32, u32, u32) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::ffi::OsStr;
+
+    fn command_args(command: &Command) -> Vec<String> {
+        command
+            .get_args()
+            .map(|arg| arg.to_string_lossy().to_string())
+            .collect()
+    }
 
     #[test]
     fn format_gpg_expiration_handles_empty_values() {
@@ -317,6 +346,55 @@ mod tests {
         assert_eq!(
             gpg_program_for_env(Some(Path::new("gpg2")), None, None),
             PathBuf::from("gpg2")
+        );
+    }
+
+    #[test]
+    fn gpg_command_adds_configured_pinentry_mode() {
+        let command = gpg_command_with_pinentry(Some(OsStr::new("ask")));
+
+        assert_eq!(command_args(&command), vec!["--pinentry-mode", "ask"]);
+    }
+
+    #[test]
+    fn user_gpg_uses_loopback_pinentry_for_passphrase_by_default() {
+        let options = UserGpgOptions {
+            homedir: None,
+            passphrase: Some("secret".to_string()),
+        };
+        let command = user_gpg_with_pinentry(&options, None);
+
+        assert_eq!(
+            command_args(&command),
+            vec![
+                "--quiet",
+                "--no-tty",
+                "--pinentry-mode",
+                "loopback",
+                "--passphrase",
+                "secret"
+            ]
+        );
+    }
+
+    #[test]
+    fn user_gpg_prefers_configured_pinentry_mode() {
+        let options = UserGpgOptions {
+            homedir: None,
+            passphrase: Some("secret".to_string()),
+        };
+        let command = user_gpg_with_pinentry(&options, Some(OsStr::new("cancel")));
+
+        assert_eq!(
+            command_args(&command),
+            vec![
+                "--pinentry-mode",
+                "cancel",
+                "--quiet",
+                "--no-tty",
+                "--passphrase",
+                "secret"
+            ]
         );
     }
 
