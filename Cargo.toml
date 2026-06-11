@@ -1,0 +1,12 @@
+[package]
+name = "git-secret-rs"
+version = "0.1.0"
+edition = "2021"
+description = "A Rust implementation of the git-secret workflow that delegates OpenPGP operations to gpg."
+license = "MIT OR Apache-2.0"
+
+[[bin]]
+name = "git-secret"
+path = "src/main.rs"
+
+[dependencies]
