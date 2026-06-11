@@ -1,23 +1,68 @@
 use std::ffi::OsStr;
+use std::fs;
+use std::io;
 use std::path::{Path, PathBuf};
 
 use crate::git::Repo;
 use crate::mapping::Mapping;
 use crate::AppResult;
 
-pub(crate) fn selected_paths(mapping: &Mapping, paths: Vec<PathBuf>) -> AppResult<Vec<String>> {
+pub(crate) fn selected_paths(
+    repo: &Repo,
+    mapping: &Mapping,
+    paths: Vec<PathBuf>,
+) -> AppResult<Vec<String>> {
     if paths.is_empty() {
         return Ok(mapping.paths());
     }
 
     paths
         .into_iter()
-        .map(|path| normalize_secret_path(&path))
+        .map(|path| normalize_secret_path_for_repo(repo, &path))
         .collect()
 }
 
 pub(crate) fn encrypted_path(repo: &Repo, path: &str) -> PathBuf {
     repo.join(format!("{}.secret", path))
+}
+
+pub(crate) fn normalize_secret_path_for_repo(repo: &Repo, path: &Path) -> AppResult<String> {
+    let current_dir =
+        std::env::current_dir().map_err(|e| format!("get current directory: {}", e))?;
+    normalize_secret_path_from_current_dir(repo.root(), &current_dir, path)
+}
+
+fn normalize_secret_path_from_current_dir(
+    repo_root: &Path,
+    current_dir: &Path,
+    path: &Path,
+) -> AppResult<String> {
+    if path.is_absolute() {
+        return normalize_secret_path(path);
+    }
+
+    let repo_root = canonicalize_existing(repo_root)
+        .map_err(|e| format!("resolve repository root {}: {}", repo_root.display(), e))?;
+    let current_dir = canonicalize_existing(current_dir)
+        .map_err(|e| format!("resolve current directory {}: {}", current_dir.display(), e))?;
+    let current_relative = current_dir.strip_prefix(&repo_root).map_err(|_| {
+        format!(
+            "current directory {} is not inside repository {}",
+            current_dir.display(),
+            repo_root.display()
+        )
+    })?;
+    let adjusted = if current_relative.as_os_str().is_empty() {
+        path.to_path_buf()
+    } else {
+        current_relative.join(path)
+    };
+
+    normalize_secret_path(&adjusted)
+}
+
+fn canonicalize_existing(path: &Path) -> io::Result<PathBuf> {
+    fs::canonicalize(path)
 }
 
 pub(crate) fn normalize_secret_path(path: &Path) -> AppResult<String> {
@@ -72,6 +117,17 @@ mod tests {
         assert_eq!(
             normalize_secret_path(Path::new("./config/secrets.env")).unwrap(),
             "config/secrets.env"
+        );
+    }
+
+    #[test]
+    fn normalize_paths_relative_to_current_subdirectory() {
+        let root = std::env::current_dir().unwrap();
+        let subdir = root.join("src");
+
+        assert_eq!(
+            normalize_secret_path_from_current_dir(&root, &subdir, Path::new("main.rs")).unwrap(),
+            "src/main.rs"
         );
     }
 

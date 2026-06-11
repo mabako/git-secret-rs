@@ -67,7 +67,7 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
     }
 
     let mut mapping = Mapping::load(&repo)?;
-    let paths = selected_paths(&mapping, options.paths)?;
+    let paths = selected_paths(&repo, &mapping, options.paths)?;
     let mut mapping_changed = false;
     for path in paths {
         let input = repo.join(&path);

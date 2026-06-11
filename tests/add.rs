@@ -48,3 +48,40 @@ fn add_tracks_secret_and_ignores_plaintext_file() {
         .expect("mapping should be readable");
     assert_eq!(mapping, "config/secret.env:\n");
 }
+
+#[test]
+fn add_and_remove_paths_are_relative_to_current_subdirectory() {
+    let repo = TempRepo::new("gsadd-subdir");
+    run_success(Command::new("git").arg("init").arg(repo.path()));
+    run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("init")
+            .current_dir(repo.path()),
+    );
+
+    let nested_dir = repo.path().join("foo");
+    fs::create_dir_all(&nested_dir).expect("nested test dir should be created");
+    fs::write(nested_dir.join("bar.txt"), "secret").expect("secret should be written");
+
+    run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("add")
+            .arg("bar.txt")
+            .current_dir(&nested_dir),
+    );
+
+    let mapping = fs::read_to_string(repo.path().join(".gitsecret/paths/mapping.cfg"))
+        .expect("mapping should be readable");
+    assert_eq!(mapping, "foo/bar.txt:\n");
+
+    run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("remove")
+            .arg("bar.txt")
+            .current_dir(&nested_dir),
+    );
+
+    let mapping = fs::read_to_string(repo.path().join(".gitsecret/paths/mapping.cfg"))
+        .expect("mapping should be readable");
+    assert_eq!(mapping, "");
+}

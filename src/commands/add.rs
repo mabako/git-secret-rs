@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use crate::git::{ensure_initialized, Repo};
 use crate::mapping::Mapping;
-use crate::paths::normalize_secret_path;
+use crate::paths::normalize_secret_path_for_repo;
 use crate::AppResult;
 
 pub(crate) fn run(paths: Vec<PathBuf>) -> AppResult<()> {
@@ -17,7 +17,7 @@ pub(crate) fn run(paths: Vec<PathBuf>) -> AppResult<()> {
     let mut added = 0;
 
     for path in paths {
-        let normalized = normalize_secret_path(&path)?;
+        let normalized = normalize_secret_path_for_repo(&repo, &path)?;
         let plaintext = repo.join(&normalized);
         if !plaintext.is_file() {
             return Err(format!("{} is not a file", normalized));

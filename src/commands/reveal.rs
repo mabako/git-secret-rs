@@ -75,7 +75,7 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
     let repo = Repo::discover()?;
     ensure_initialized(&repo)?;
     let mapping = Mapping::load(&repo)?;
-    let paths = selected_paths(&mapping, options.paths)?;
+    let paths = selected_paths(&repo, &mapping, options.paths)?;
 
     for path in paths {
         let input = encrypted_path(&repo, &path);

@@ -41,6 +41,10 @@ impl Repo {
     pub(crate) fn join<P: AsRef<Path>>(&self, path: P) -> PathBuf {
         self.root.join(path)
     }
+
+    pub(crate) fn root(&self) -> &Path {
+        &self.root
+    }
 }
 
 pub(crate) fn ensure_initialized(repo: &Repo) -> AppResult<()> {

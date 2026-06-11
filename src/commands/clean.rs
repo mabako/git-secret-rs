@@ -10,7 +10,7 @@ pub(crate) fn run(paths: Vec<PathBuf>) -> AppResult<()> {
     let repo = Repo::discover()?;
     ensure_initialized(&repo)?;
     let mapping = Mapping::load(&repo)?;
-    let paths = selected_paths(&mapping, paths)?;
+    let paths = selected_paths(&repo, &mapping, paths)?;
 
     for path in paths {
         let plaintext = repo.join(&path);

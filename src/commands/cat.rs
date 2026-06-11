@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::git::{ensure_initialized, user_gpg, Repo, UserGpgOptions};
-use crate::paths::{encrypted_path, normalize_secret_path};
+use crate::paths::{encrypted_path, normalize_secret_path_for_repo};
 use crate::process::CommandExt;
 use crate::AppResult;
 
@@ -55,7 +55,7 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
     ensure_initialized(&repo)?;
 
     for path in options.paths {
-        let normalized = normalize_secret_path(&path)?;
+        let normalized = normalize_secret_path_for_repo(&repo, &path)?;
         let secret = encrypted_path(&repo, &normalized);
         user_gpg(&options.gpg)
             .arg("--batch")
