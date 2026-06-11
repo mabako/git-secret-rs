@@ -4,7 +4,7 @@ An early Rust implementation of the `git-secret` workflow.
 
 This version keeps the same operating model as the bash implementation:
 
-- tracked plaintext paths are stored under `.gitsecret/paths/mapping.cfg`
+- tracked plaintext paths and SHA-256 sums are stored under `.gitsecret/paths/mapping.cfg`
 - public keys live in a repository-local GPG home at `.gitsecret/keys`
 - encrypted files are written next to their plaintext source as `<path>.secret`
 - cryptographic operations are delegated to the local `gpg` executable
