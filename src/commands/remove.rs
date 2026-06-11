@@ -14,13 +14,6 @@ pub(crate) struct Options {
     paths: Vec<PathBuf>,
 }
 
-#[cfg(test)]
-impl Options {
-    pub(crate) fn parse(args: Vec<String>) -> AppResult<Self> {
-        super::parse_options("git secret remove", args)
-    }
-}
-
 pub(crate) fn run(options: Options) -> AppResult<()> {
     if options.paths.is_empty() {
         return Err("remove requires at least one file".to_string());
@@ -56,10 +49,18 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use clap::{Args, FromArgMatches};
+
+    fn command() -> clap::Command {
+        Options::augment_args(clap::Command::new("remove"))
+    }
 
     #[test]
     fn remove_options_parse_clean_help_and_paths() {
-        let options = Options::parse(vec!["-c".to_string(), "secret.txt".to_string()]).unwrap();
+        let matches = command()
+            .try_get_matches_from(["remove", "-c", "secret.txt"])
+            .unwrap();
+        let options = Options::from_arg_matches(&matches).unwrap();
 
         assert!(options.clean_encrypted);
         assert_eq!(options.paths, vec![PathBuf::from("secret.txt")]);
@@ -67,6 +68,6 @@ mod tests {
 
     #[test]
     fn remove_options_reject_unknown_flags() {
-        assert!(Options::parse(vec!["-v".to_string()]).is_err());
+        assert!(command().try_get_matches_from(["remove", "-v"]).is_err());
     }
 }

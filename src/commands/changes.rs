@@ -12,13 +12,6 @@ pub(crate) struct Options {
     gpg: UserGpgOptions,
 }
 
-#[cfg(test)]
-impl Options {
-    pub(crate) fn parse(args: Vec<String>) -> AppResult<Self> {
-        super::parse_options("git secret changes", args)
-    }
-}
-
 pub(crate) fn run(options: Options) -> AppResult<()> {
     let repo = Repo::discover()?;
     ensure_initialized(&repo)?;
@@ -85,17 +78,19 @@ fn decrypt_secret(gpg: &UserGpgOptions, secret: &Path) -> AppResult<Vec<u8>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use clap::{Args, FromArgMatches};
     use std::path::PathBuf;
+
+    fn command() -> clap::Command {
+        Options::augment_args(clap::Command::new("changes"))
+    }
 
     #[test]
     fn changes_options_parse_homedir_password_and_help() {
-        let options = Options::parse(vec![
-            "-d".to_string(),
-            "keys".to_string(),
-            "-p".to_string(),
-            "secret".to_string(),
-        ])
-        .unwrap();
+        let matches = command()
+            .try_get_matches_from(["changes", "-d", "keys", "-p", "secret"])
+            .unwrap();
+        let options = Options::from_arg_matches(&matches).unwrap();
 
         assert_eq!(options.gpg.homedir, Some(PathBuf::from("keys")));
         assert_eq!(options.gpg.passphrase, Some("secret".to_string()));
@@ -103,7 +98,7 @@ mod tests {
 
     #[test]
     fn changes_options_require_values() {
-        assert!(Options::parse(vec!["-d".to_string()]).is_err());
-        assert!(Options::parse(vec!["-p".to_string()]).is_err());
+        assert!(command().try_get_matches_from(["changes", "-d"]).is_err());
+        assert!(command().try_get_matches_from(["changes", "-p"]).is_err());
     }
 }

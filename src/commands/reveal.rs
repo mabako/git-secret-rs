@@ -32,13 +32,6 @@ pub(crate) struct Options {
     paths: Vec<PathBuf>,
 }
 
-#[cfg(test)]
-impl Options {
-    pub(crate) fn parse(args: Vec<String>) -> AppResult<Self> {
-        super::parse_options("git secret reveal", args)
-    }
-}
-
 pub(crate) fn run(options: Options) -> AppResult<()> {
     let repo = Repo::discover()?;
     ensure_initialized(&repo)?;
@@ -110,21 +103,20 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use clap::{Args, FromArgMatches};
+
+    fn command() -> clap::Command {
+        Options::augment_args(clap::Command::new("reveal"))
+    }
 
     #[test]
     fn reveal_options_parse_all_supported_flags() {
-        let options = Options::parse(vec![
-            "-f".to_string(),
-            "-F".to_string(),
-            "-d".to_string(),
-            "keys".to_string(),
-            "-v".to_string(),
-            "-p".to_string(),
-            "secret".to_string(),
-            "-P".to_string(),
-            "file.txt".to_string(),
-        ])
-        .unwrap();
+        let matches = command()
+            .try_get_matches_from([
+                "reveal", "-f", "-F", "-d", "keys", "-v", "-p", "secret", "-P", "file.txt",
+            ])
+            .unwrap();
+        let options = Options::from_arg_matches(&matches).unwrap();
 
         assert!(options.force);
         assert!(options.continue_on_error);
@@ -137,6 +129,8 @@ mod tests {
 
     #[test]
     fn reveal_options_reject_removed_long_force_option() {
-        assert!(Options::parse(vec!["--force".to_string()]).is_err());
+        assert!(command()
+            .try_get_matches_from(["reveal", "--force"])
+            .is_err());
     }
 }

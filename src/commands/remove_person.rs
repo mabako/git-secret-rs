@@ -8,13 +8,6 @@ pub(crate) struct Options {
     keys: Vec<String>,
 }
 
-#[cfg(test)]
-impl Options {
-    pub(crate) fn parse(args: Vec<String>) -> AppResult<Self> {
-        super::parse_options("git secret removeperson", args)
-    }
-}
-
 pub(crate) fn run(options: Options) -> AppResult<()> {
     if options.keys.is_empty() {
         return Err("removeperson requires at least one fingerprint, key id, or email".to_string());
@@ -39,15 +32,25 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use clap::{Args, FromArgMatches};
+
+    fn command() -> clap::Command {
+        Options::augment_args(clap::Command::new("removeperson"))
+    }
 
     #[test]
     fn removeperson_options_parse_help_and_keys() {
-        let options = Options::parse(vec!["user@example.com".to_string()]).unwrap();
+        let matches = command()
+            .try_get_matches_from(["removeperson", "user@example.com"])
+            .unwrap();
+        let options = Options::from_arg_matches(&matches).unwrap();
         assert_eq!(options.keys, vec!["user@example.com".to_string()]);
     }
 
     #[test]
     fn removeperson_options_reject_unknown_flags() {
-        assert!(Options::parse(vec!["-v".to_string()]).is_err());
+        assert!(command()
+            .try_get_matches_from(["removeperson", "-v"])
+            .is_err());
     }
 }

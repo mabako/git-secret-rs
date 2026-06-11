@@ -22,13 +22,6 @@ pub(crate) struct Options {
     keys: Vec<String>,
 }
 
-#[cfg(test)]
-impl Options {
-    pub(crate) fn parse(args: Vec<String>) -> AppResult<Self> {
-        super::parse_options("git secret tell", args)
-    }
-}
-
 pub(crate) fn run(options: Options) -> AppResult<Vec<String>> {
     let mut keys = options.keys;
     if options.use_git_email {
@@ -115,16 +108,18 @@ fn git_user_email() -> AppResult<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use clap::{Args, FromArgMatches};
+
+    fn command() -> clap::Command {
+        Options::augment_args(clap::Command::new("tell"))
+    }
 
     #[test]
     fn tell_options_parse_git_email_and_homedir() {
-        let options = Options::parse(vec![
-            "-m".to_string(),
-            "-d".to_string(),
-            "keys".to_string(),
-            "user@example.com".to_string(),
-        ])
-        .unwrap();
+        let matches = command()
+            .try_get_matches_from(["tell", "-m", "-d", "keys", "user@example.com"])
+            .unwrap();
+        let options = Options::from_arg_matches(&matches).unwrap();
 
         assert!(options.use_git_email);
         assert_eq!(options.gpg_homedir, Some(PathBuf::from("keys")));
@@ -133,11 +128,11 @@ mod tests {
 
     #[test]
     fn tell_options_parse_help() {
-        assert!(Options::parse(vec!["-h".to_string()]).is_err());
+        assert!(command().try_get_matches_from(["tell", "-h"]).is_err());
     }
 
     #[test]
     fn tell_options_require_homedir_after_d() {
-        assert!(Options::parse(vec!["-d".to_string()]).is_err());
+        assert!(command().try_get_matches_from(["tell", "-d"]).is_err());
     }
 }

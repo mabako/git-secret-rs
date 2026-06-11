@@ -1,7 +1,5 @@
 use std::ffi::OsString;
 
-#[cfg(test)]
-use clap::{Args as ClapArgs, FromArgMatches};
 use clap::{CommandFactory, Parser, Subcommand};
 
 use crate::AppResult;
@@ -88,7 +86,7 @@ enum Command {
     Init(init::Options),
 
     /// removes public keys for passed email addresses or GPG fingerprints from repo’s git-secret keyring.
-    #[command(alias = "killperson")]
+    #[command(name = "removeperson", alias = "killperson")]
     RemovePerson(remove_person::Options),
 
     /// print the files currently considered secret in this repo.
@@ -104,6 +102,7 @@ enum Command {
     Tell(tell::Options),
 
     /// print email addresses allowed to access the secrets in this repo.
+    #[command(name = "whoknows")]
     WhoKnows(whoknows::Options),
 
     #[command(hide = true)]
@@ -112,16 +111,4 @@ enum Command {
     Help,
     Usage,
     Version,
-}
-
-#[cfg(test)]
-pub(crate) fn parse_options<T>(name: &'static str, args: Vec<String>) -> AppResult<T>
-where
-    T: ClapArgs + FromArgMatches,
-{
-    let command = T::augment_args(clap::Command::new(name));
-    let matches = command
-        .try_get_matches_from(std::iter::once(name.to_string()).chain(args))
-        .map_err(|error| error.to_string())?;
-    T::from_arg_matches(&matches).map_err(|error| error.to_string())
 }

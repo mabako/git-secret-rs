@@ -12,13 +12,6 @@ pub(crate) struct Options {
     paths: Vec<PathBuf>,
 }
 
-#[cfg(test)]
-impl Options {
-    pub(crate) fn parse(args: Vec<String>) -> AppResult<Self> {
-        super::parse_options("git secret textconv", args)
-    }
-}
-
 pub(crate) fn run(options: Options) -> AppResult<()> {
     if options.paths.is_empty() {
         return Err("textconv requires at least one encrypted file".to_string());
@@ -38,17 +31,18 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use clap::{Args, FromArgMatches};
+
+    fn command() -> clap::Command {
+        Options::augment_args(clap::Command::new("textconv"))
+    }
 
     #[test]
     fn textconv_options_parse_homedir_password_and_paths() {
-        let options = Options::parse(vec![
-            "-d".to_string(),
-            "keys".to_string(),
-            "-p".to_string(),
-            "secret".to_string(),
-            "file.secret".to_string(),
-        ])
-        .unwrap();
+        let matches = command()
+            .try_get_matches_from(["textconv", "-d", "keys", "-p", "secret", "file.secret"])
+            .unwrap();
+        let options = Options::from_arg_matches(&matches).unwrap();
 
         assert_eq!(options.gpg.homedir, Some(PathBuf::from("keys")));
         assert_eq!(options.gpg.passphrase, Some("secret".to_string()));

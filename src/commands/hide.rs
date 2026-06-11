@@ -33,13 +33,6 @@ pub(crate) struct Options {
     paths: Vec<PathBuf>,
 }
 
-#[cfg(test)]
-impl Options {
-    pub(crate) fn parse(args: Vec<String>) -> AppResult<Self> {
-        super::parse_options("git secret hide", args)
-    }
-}
-
 pub(crate) fn run(options: Options) -> AppResult<()> {
     let repo = Repo::discover()?;
     ensure_initialized(&repo)?;
@@ -118,18 +111,18 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use clap::{Args, FromArgMatches};
+
+    fn command() -> clap::Command {
+        Options::augment_args(clap::Command::new("hide"))
+    }
 
     #[test]
     fn hide_options_parse_flags_and_paths() {
-        let options = Options::parse(vec![
-            "-c".to_string(),
-            "-F".to_string(),
-            "-P".to_string(),
-            "-d".to_string(),
-            "-m".to_string(),
-            "secret.env".to_string(),
-        ])
-        .unwrap();
+        let matches = command()
+            .try_get_matches_from(["hide", "-c", "-F", "-P", "-d", "-m", "secret.env"])
+            .unwrap();
+        let options = Options::from_arg_matches(&matches).unwrap();
 
         assert!(options.clean_encrypted);
         assert!(options.continue_missing);
@@ -141,7 +134,7 @@ mod tests {
 
     #[test]
     fn hide_options_reject_removed_force_option() {
-        assert!(Options::parse(vec!["--force".to_string()]).is_err());
-        assert!(Options::parse(vec!["-f".to_string()]).is_err());
+        assert!(command().try_get_matches_from(["hide", "--force"]).is_err());
+        assert!(command().try_get_matches_from(["hide", "-f"]).is_err());
     }
 }

@@ -10,13 +10,6 @@ pub(crate) struct Options {
     verbose: bool,
 }
 
-#[cfg(test)]
-impl Options {
-    pub(crate) fn parse(args: Vec<String>) -> AppResult<Self> {
-        super::parse_options("git secret clean", args)
-    }
-}
-
 pub(crate) fn run(options: Options) -> AppResult<()> {
     let repo = Repo::discover()?;
     ensure_initialized(&repo)?;
@@ -81,16 +74,26 @@ fn repo_relative_path(repo_root: &Path, path: &Path) -> AppResult<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use clap::{Args, FromArgMatches};
+
+    fn command() -> clap::Command {
+        Options::augment_args(clap::Command::new("clean"))
+    }
 
     #[test]
     fn clean_options_parse_verbose_and_help() {
-        let options = Options::parse(vec!["-v".to_string()]).unwrap();
+        let matches = command().try_get_matches_from(["clean", "-v"]).unwrap();
+        let options = Options::from_arg_matches(&matches).unwrap();
         assert!(options.verbose);
     }
 
     #[test]
     fn clean_options_reject_unknown_flags() {
-        assert!(Options::parse(vec!["file.txt".to_string()]).is_err());
-        assert!(Options::parse(vec!["--verbose".to_string()]).is_err());
+        assert!(command()
+            .try_get_matches_from(["clean", "file.txt"])
+            .is_err());
+        assert!(command()
+            .try_get_matches_from(["clean", "--verbose"])
+            .is_err());
     }
 }

@@ -12,13 +12,6 @@ pub(crate) struct Options {
     paths: Vec<PathBuf>,
 }
 
-#[cfg(test)]
-impl Options {
-    pub(crate) fn parse(args: Vec<String>) -> AppResult<Self> {
-        super::parse_options("git secret add", args)
-    }
-}
-
 pub(crate) fn run(options: Options) -> AppResult<()> {
     if options.paths.is_empty() {
         return Err("add requires at least one file".to_string());
@@ -74,15 +67,21 @@ fn add_to_gitignore(repo: &Repo, path: &str) -> AppResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use clap::{Args, FromArgMatches};
+
+    fn command() -> clap::Command {
+        Options::augment_args(clap::Command::new("add"))
+    }
 
     #[test]
     fn add_options_parse_help_and_paths() {
-        let options = Options::parse(vec!["file.txt".to_string()]).unwrap();
+        let matches = command().try_get_matches_from(["add", "file.txt"]).unwrap();
+        let options = Options::from_arg_matches(&matches).unwrap();
         assert_eq!(options.paths, vec![PathBuf::from("file.txt")]);
     }
 
     #[test]
     fn add_options_reject_unknown_flags() {
-        assert!(Options::parse(vec!["-d".to_string()]).is_err());
+        assert!(command().try_get_matches_from(["add", "-d"]).is_err());
     }
 }

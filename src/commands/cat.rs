@@ -13,13 +13,6 @@ pub(crate) struct Options {
     paths: Vec<PathBuf>,
 }
 
-#[cfg(test)]
-impl Options {
-    pub(crate) fn parse(args: Vec<String>) -> AppResult<Self> {
-        super::parse_options("git secret cat", args)
-    }
-}
-
 pub(crate) fn run(options: Options) -> AppResult<()> {
     if options.paths.is_empty() {
         return Err("cat requires at least one file".to_string());
@@ -44,17 +37,18 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use clap::{Args, FromArgMatches};
+
+    fn command() -> clap::Command {
+        Options::augment_args(clap::Command::new("cat"))
+    }
 
     #[test]
     fn cat_options_parse_homedir_password_and_paths() {
-        let options = Options::parse(vec![
-            "-d".to_string(),
-            "keys".to_string(),
-            "-p".to_string(),
-            "secret".to_string(),
-            "file.txt".to_string(),
-        ])
-        .unwrap();
+        let matches = command()
+            .try_get_matches_from(["cat", "-d", "keys", "-p", "secret", "file.txt"])
+            .unwrap();
+        let options = Options::from_arg_matches(&matches).unwrap();
 
         assert_eq!(options.gpg.homedir, Some(PathBuf::from("keys")));
         assert_eq!(options.gpg.passphrase, Some("secret".to_string()));
@@ -63,6 +57,6 @@ mod tests {
 
     #[test]
     fn cat_options_parse_help() {
-        assert!(Options::parse(vec!["-h".to_string()]).is_err());
+        assert!(command().try_get_matches_from(["cat", "-h"]).is_err());
     }
 }

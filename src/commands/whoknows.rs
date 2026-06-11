@@ -7,13 +7,6 @@ pub(crate) struct Options {
     long: bool,
 }
 
-#[cfg(test)]
-impl Options {
-    pub(crate) fn parse(args: Vec<String>) -> AppResult<Self> {
-        super::parse_options("git secret whoknows", args)
-    }
-}
-
 pub(crate) fn run(options: Options) -> AppResult<()> {
     let repo = Repo::discover()?;
     ensure_initialized(&repo)?;
@@ -38,15 +31,23 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use clap::{Args, FromArgMatches};
+
+    fn command() -> clap::Command {
+        Options::augment_args(clap::Command::new("whoknows"))
+    }
 
     #[test]
     fn whoknows_options_parse_long_and_help() {
-        let options = Options::parse(vec!["-l".to_string()]).unwrap();
+        let matches = command().try_get_matches_from(["whoknows", "-l"]).unwrap();
+        let options = Options::from_arg_matches(&matches).unwrap();
         assert!(options.long);
     }
 
     #[test]
     fn whoknows_options_reject_unknown_flags() {
-        assert!(Options::parse(vec!["--long".to_string()]).is_err());
+        assert!(command()
+            .try_get_matches_from(["whoknows", "--long"])
+            .is_err());
     }
 }

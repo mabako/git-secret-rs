@@ -5,13 +5,6 @@ use crate::AppResult;
 #[derive(clap::Args)]
 pub(crate) struct Options {}
 
-#[cfg(test)]
-impl Options {
-    pub(crate) fn parse(args: Vec<String>) -> AppResult<Self> {
-        super::parse_options("git secret list", args)
-    }
-}
-
 pub(crate) fn run(options: Options) -> AppResult<()> {
     let _ = options;
 
@@ -28,14 +21,19 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use clap::Args;
+
+    fn command() -> clap::Command {
+        Options::augment_args(clap::Command::new("list"))
+    }
 
     #[test]
     fn list_options_parse_help() {
-        assert!(Options::parse(vec!["-h".to_string()]).is_err());
+        assert!(command().try_get_matches_from(["list", "-h"]).is_err());
     }
 
     #[test]
     fn list_options_reject_unknown_flags() {
-        assert!(Options::parse(vec!["-v".to_string()]).is_err());
+        assert!(command().try_get_matches_from(["list", "-v"]).is_err());
     }
 }
