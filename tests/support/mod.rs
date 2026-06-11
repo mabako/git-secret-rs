@@ -72,6 +72,13 @@ pub(crate) fn run_success(command: &mut Command) -> Output {
     output
 }
 
+pub(crate) fn gpg_command() -> Command {
+    Command::new(match std::env::var("MSYSTEM").ok().as_deref() {
+        Some("MINGW64") => r"C:\Program Files (x86)\GnuPG\bin\gpg.exe",
+        _ => "gpg",
+    })
+}
+
 pub(crate) fn fixture_path(path: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests")

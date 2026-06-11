@@ -14,6 +14,7 @@ mod remove;
 mod remove_person;
 mod reveal;
 mod tell;
+mod textconv;
 mod whoknows;
 
 pub(crate) fn run(args: Vec<OsString>) -> AppResult<()> {
@@ -39,6 +40,7 @@ pub(crate) fn run(args: Vec<OsString>) -> AppResult<()> {
         "hide" => hide::run(hide::Options::parse(args.rest_strings()?)?),
         "reveal" => reveal::run(reveal::Options::parse(args.rest_strings()?)?),
         "cat" => cat::run(cat::Options::parse(args.rest_strings()?)?),
+        "textconv" => textconv::run(textconv::Options::parse(args.rest_strings()?)?),
         "clean" => clean::run(args.rest_paths()?),
         "changes" => changes::run(),
         unknown => Err(format!(

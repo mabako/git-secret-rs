@@ -3,7 +3,7 @@ use std::process::Command;
 
 mod support;
 
-use support::{run_success, TempRepo};
+use support::{gpg_command, run_success, TempRepo};
 
 #[test]
 fn init_creates_repository_files_with_empty_keyring() {
@@ -23,6 +23,7 @@ fn init_creates_repository_files_with_empty_keyring() {
     let paths = gitsecret.join("paths");
     let mapping = paths.join("mapping.cfg");
     let root_gitignore = repo.path().join(".gitignore");
+    let root_gitattributes = repo.path().join(".gitattributes");
 
     assert!(gitsecret.is_dir(), "{} should exist", gitsecret.display());
     assert!(keys.is_dir(), "{} should exist", keys.display());
@@ -50,9 +51,24 @@ fn init_creates_repository_files_with_empty_keyring() {
         fs::read_to_string(&root_gitignore).expect("root .gitignore should be readable"),
         ".gitsecret/keys/random_seed\n.gitsecret/keys/*.lock\n!*.secret\n"
     );
+    assert_eq!(
+        fs::read_to_string(&root_gitattributes).expect("root .gitattributes should be readable"),
+        "*.secret diff=git-secret\n"
+    );
+    let textconv = run_success(
+        Command::new("git")
+            .arg("config")
+            .arg("--get")
+            .arg("diff.git-secret.textconv")
+            .current_dir(repo.path()),
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&textconv.stdout).trim(),
+        "git-secret textconv"
+    );
 
     let keyring = run_success(
-        Command::new("gpg")
+        gpg_command()
             .arg("--homedir")
             .arg(&keys)
             .arg("--with-colons")
@@ -116,5 +132,51 @@ fn init_adds_default_gitignore_entries_without_duplicates() {
             .filter(|line| line.trim() == "!*.secret")
             .count(),
         1
+    );
+}
+
+#[test]
+fn init_adds_gitattributes_diff_driver_without_duplicates() {
+    let repo = TempRepo::new("git-secret-init-gitattributes");
+    run_success(Command::new("git").arg("init").arg(repo.path()));
+    fs::write(
+        repo.path().join(".gitattributes"),
+        "*.txt text\n*.secret diff=git-secret\nexisting attr",
+    )
+    .expect("existing .gitattributes should be written");
+
+    run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("init")
+            .current_dir(repo.path()),
+    );
+    run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("init")
+            .current_dir(repo.path()),
+    );
+
+    let gitattributes = fs::read_to_string(repo.path().join(".gitattributes"))
+        .expect(".gitattributes should be readable");
+    assert!(gitattributes.contains("*.txt text\n"));
+    assert!(gitattributes.contains("existing attr"));
+    assert_eq!(
+        gitattributes
+            .lines()
+            .filter(|line| line.trim() == "*.secret diff=git-secret")
+            .count(),
+        1
+    );
+
+    let textconv = run_success(
+        Command::new("git")
+            .arg("config")
+            .arg("--get")
+            .arg("diff.git-secret.textconv")
+            .current_dir(repo.path()),
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&textconv.stdout).trim(),
+        "git-secret textconv"
     );
 }

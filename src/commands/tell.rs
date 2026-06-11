@@ -2,7 +2,7 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
-use crate::git::{ensure_initialized, repo_gpg, Repo};
+use crate::git::{ensure_initialized, gpg_command, repo_gpg, Repo};
 use crate::AppResult;
 
 pub(crate) struct Options {
@@ -104,7 +104,7 @@ pub(crate) fn run(options: Options) -> AppResult<Vec<String>> {
 }
 
 fn source_gpg(homedir: Option<&PathBuf>) -> Command {
-    let mut command = Command::new("gpg");
+    let mut command = gpg_command();
     if let Some(homedir) = homedir {
         command.arg("--homedir").arg(homedir);
     }

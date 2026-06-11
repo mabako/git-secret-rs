@@ -2,7 +2,7 @@ use std::process::Command;
 
 mod support;
 
-use support::{fixture_path, run_success, TempDir, TempRepo};
+use support::{fixture_path, gpg_command, run_success, TempDir, TempRepo};
 
 const USER1_FINGERPRINT: &str = "CE82DD3AFC167295F9132371D2805A4182E99FF4";
 const USER1_UID: &str = "user1 <user1@gitsecret.io>";
@@ -11,7 +11,7 @@ const USER1_UID: &str = "user1 <user1@gitsecret.io>";
 fn tell_and_removeperson_accept_fingerprint() {
     let user_gpg_home = TempDir::new("guser");
     run_success(
-        Command::new("gpg")
+        gpg_command()
             .arg("--homedir")
             .arg(user_gpg_home.path())
             .arg("--batch")
@@ -90,7 +90,7 @@ fn tell_and_removeperson_accept_fingerprint() {
 fn tell_can_use_git_email_and_help_flag() {
     let user_gpg_home = TempDir::new("guser");
     run_success(
-        Command::new("gpg")
+        gpg_command()
             .arg("--homedir")
             .arg(user_gpg_home.path())
             .arg("--batch")

@@ -9,6 +9,7 @@ const ROOT_GITIGNORE_ENTRIES: &[&str] = &[
     ".gitsecret/keys/*.lock",
     "!*.secret",
 ];
+const ROOT_GITATTRIBUTES_ENTRIES: &[&str] = &["*.secret diff=git-secret"];
 
 pub(crate) fn run() -> AppResult<()> {
     let repo = Repo::discover()?;
@@ -21,6 +22,8 @@ pub(crate) fn run() -> AppResult<()> {
     }
 
     add_lines_to_root_gitignore(&repo, ROOT_GITIGNORE_ENTRIES)?;
+    add_lines_to_root_file(&repo, ".gitattributes", ROOT_GITATTRIBUTES_ENTRIES)?;
+    configure_diff_driver()?;
 
     repo_gpg(&repo)
         .arg("--list-keys")
@@ -31,11 +34,15 @@ pub(crate) fn run() -> AppResult<()> {
 }
 
 fn add_lines_to_root_gitignore(repo: &Repo, entries: &[&str]) -> AppResult<()> {
-    let gitignore = repo.join(".gitignore");
-    let content = match fs::read_to_string(&gitignore) {
+    add_lines_to_root_file(repo, ".gitignore", entries)
+}
+
+fn add_lines_to_root_file(repo: &Repo, file: &str, entries: &[&str]) -> AppResult<()> {
+    let path = repo.join(file);
+    let content = match fs::read_to_string(&path) {
         Ok(content) => content,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => String::new(),
-        Err(error) => return Err(format!("read {}: {}", gitignore.display(), error)),
+        Err(error) => return Err(format!("read {}: {}", path.display(), error)),
     };
 
     let mut updated = content;
@@ -53,9 +60,16 @@ fn add_lines_to_root_gitignore(repo: &Repo, entries: &[&str]) -> AppResult<()> {
     }
 
     if changed {
-        fs::write(&gitignore, updated)
-            .map_err(|e| format!("write {}: {}", gitignore.display(), e))?;
+        fs::write(&path, updated).map_err(|e| format!("write {}: {}", path.display(), e))?;
     }
 
     Ok(())
+}
+
+fn configure_diff_driver() -> AppResult<()> {
+    std::process::Command::new("git")
+        .arg("config")
+        .arg("diff.git-secret.textconv")
+        .arg("git-secret textconv")
+        .status_ok("configure git-secret diff textconv")
 }

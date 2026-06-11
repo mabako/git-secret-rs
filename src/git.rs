@@ -1,3 +1,4 @@
+use std::env;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
@@ -7,6 +8,7 @@ pub(crate) const SECRET_DIR: &str = ".gitsecret";
 pub(crate) const KEYS_DIR: &str = ".gitsecret/keys";
 pub(crate) const PATHS_DIR: &str = ".gitsecret/paths";
 pub(crate) const MAPPING_FILE: &str = ".gitsecret/paths/mapping.cfg";
+const MINGW64_GPG: &str = r"C:\Program Files (x86)\GnuPG\bin\gpg.exe";
 
 pub(crate) struct RecipientRecord {
     pub(crate) uid: String,
@@ -50,7 +52,7 @@ pub(crate) fn ensure_initialized(repo: &Repo) -> AppResult<()> {
 }
 
 pub(crate) fn repo_gpg(repo: &Repo) -> Command {
-    let mut command = Command::new("gpg");
+    let mut command = gpg_command();
     command.arg("--homedir").arg(repo.join(KEYS_DIR));
     command
 }
@@ -62,7 +64,8 @@ pub(crate) struct UserGpgOptions {
 }
 
 pub(crate) fn user_gpg(options: &UserGpgOptions) -> Command {
-    let mut command = Command::new("gpg");
+    let mut command = gpg_command();
+    command.arg("--quiet").arg("--no-tty");
     if let Some(homedir) = &options.homedir {
         command.arg("--homedir").arg(homedir);
     }
@@ -74,6 +77,17 @@ pub(crate) fn user_gpg(options: &UserGpgOptions) -> Command {
             .arg(passphrase);
     }
     command
+}
+
+pub(crate) fn gpg_command() -> Command {
+    Command::new(gpg_program_for_msystem(env::var("MSYSTEM").ok().as_deref()))
+}
+
+fn gpg_program_for_msystem(msystem: Option<&str>) -> &'static str {
+    match msystem {
+        Some("MINGW64") => MINGW64_GPG,
+        _ => "gpg",
+    }
 }
 
 pub(crate) fn recipient_key_ids(repo: &Repo) -> AppResult<Vec<String>> {
@@ -190,5 +204,19 @@ mod tests {
             format_gpg_expiration("1453490413"),
             Some("2016-01-22".to_string())
         );
+    }
+
+    #[test]
+    fn gpg_program_uses_original_gnupg_under_mingw64() {
+        assert_eq!(
+            gpg_program_for_msystem(Some("MINGW64")),
+            r"C:\Program Files (x86)\GnuPG\bin\gpg.exe"
+        );
+    }
+
+    #[test]
+    fn gpg_program_uses_path_lookup_outside_mingw64() {
+        assert_eq!(gpg_program_for_msystem(None), "gpg");
+        assert_eq!(gpg_program_for_msystem(Some("MSYS")), "gpg");
     }
 }

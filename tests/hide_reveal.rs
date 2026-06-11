@@ -4,7 +4,7 @@ use std::process::Command;
 
 mod support;
 
-use support::{fixture_path, run_success, TempDir, TempRepo};
+use support::{fixture_path, gpg_command, run_success, TempDir, TempRepo};
 
 const KEY_PASSPHRASE: &str = "user1pass";
 
@@ -117,6 +117,22 @@ fn hide_and_reveal_round_trip_with_supplied_keys() {
         String::from_utf8_lossy(&cat_output.stdout),
         "the launch code changed"
     );
+    assert_eq!(String::from_utf8_lossy(&cat_output.stderr), "");
+    let textconv_output = run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("textconv")
+            .arg("-d")
+            .arg(user_gpg_home.path())
+            .arg("-p")
+            .arg(KEY_PASSPHRASE)
+            .arg(&encrypted_path)
+            .current_dir(repo.path()),
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&textconv_output.stdout),
+        "the launch code changed"
+    );
+    assert_eq!(String::from_utf8_lossy(&textconv_output.stderr), "");
 
     let cat_help = run_success(
         Command::new(env!("CARGO_BIN_EXE_git-secret"))
@@ -191,7 +207,7 @@ fn hide_and_reveal_round_trip_with_supplied_keys() {
 
 fn import_public_key_to_repo_keyring(keyring: &PathBuf, public_key: &PathBuf) {
     run_success(
-        Command::new("gpg")
+        gpg_command()
             .arg("--homedir")
             .arg(keyring)
             .arg("--batch")
@@ -202,7 +218,7 @@ fn import_public_key_to_repo_keyring(keyring: &PathBuf, public_key: &PathBuf) {
 
 fn import_private_key_to_user_keyring(keyring: &std::path::Path, private_key: &PathBuf) {
     run_success(
-        Command::new("gpg")
+        gpg_command()
             .arg("--homedir")
             .arg(keyring)
             .arg("--batch")
