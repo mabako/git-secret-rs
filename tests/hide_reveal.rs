@@ -7,7 +7,6 @@ mod support;
 use support::{fixture_path, run_success, TempDir, TempRepo};
 
 const KEY_PASSPHRASE: &str = "user1pass";
-const PASSPHRASE_ENV: &str = "GIT_SECRET_GPG_PASSPHRASE";
 
 #[test]
 fn hide_and_reveal_round_trip_with_supplied_keys() {
@@ -104,6 +103,32 @@ fn hide_and_reveal_round_trip_with_supplied_keys() {
         b"the launch code changed"
     );
 
+    let cat_output = run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("cat")
+            .arg("-d")
+            .arg(user_gpg_home.path())
+            .arg("-p")
+            .arg(KEY_PASSPHRASE)
+            .arg("secret.txt")
+            .current_dir(repo.path()),
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&cat_output.stdout),
+        "the launch code changed"
+    );
+
+    let cat_help = run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("cat")
+            .arg("-h"),
+    );
+    let cat_help = String::from_utf8_lossy(&cat_help.stdout);
+    assert!(cat_help.contains("git-secret-cat"));
+    assert!(cat_help.contains("-d"));
+    assert!(cat_help.contains("-p"));
+    assert!(cat_help.contains("-h"));
+
     fs::remove_file(&secret_path).expect("plaintext should be removed before reveal");
     run_success(
         Command::new(env!("CARGO_BIN_EXE_git-secret"))
@@ -114,8 +139,18 @@ fn hide_and_reveal_round_trip_with_supplied_keys() {
     run_success(
         Command::new(env!("CARGO_BIN_EXE_git-secret"))
             .arg("reveal")
-            .env("GNUPGHOME", user_gpg_home.path())
-            .env(PASSPHRASE_ENV, KEY_PASSPHRASE)
+            .arg("-F")
+            .arg("missing.txt")
+            .current_dir(repo.path()),
+    );
+    run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("reveal")
+            .arg("-d")
+            .arg(user_gpg_home.path())
+            .arg("-p")
+            .arg(KEY_PASSPHRASE)
+            .arg("-v")
             .current_dir(repo.path()),
     );
 
@@ -137,6 +172,21 @@ fn hide_and_reveal_round_trip_with_supplied_keys() {
     assert!(hide_help.contains("-d"));
     assert!(hide_help.contains("-m"));
     assert!(hide_help.contains("-h"));
+
+    let reveal_help = run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("reveal")
+            .arg("-h"),
+    );
+    let reveal_help = String::from_utf8_lossy(&reveal_help.stdout);
+    assert!(reveal_help.contains("git-secret-reveal"));
+    assert!(reveal_help.contains("-f"));
+    assert!(reveal_help.contains("-F"));
+    assert!(reveal_help.contains("-d"));
+    assert!(reveal_help.contains("-v"));
+    assert!(reveal_help.contains("-p"));
+    assert!(reveal_help.contains("-P"));
+    assert!(reveal_help.contains("-h"));
 }
 
 fn import_public_key_to_repo_keyring(keyring: &PathBuf, public_key: &PathBuf) {

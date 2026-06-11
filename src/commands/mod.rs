@@ -38,7 +38,7 @@ pub(crate) fn run(args: Vec<OsString>) -> AppResult<()> {
         "list" => list::run(),
         "hide" => hide::run(hide::Options::parse(args.rest_strings()?)?),
         "reveal" => reveal::run(reveal::Options::parse(args.rest_strings()?)?),
-        "cat" => cat::run(args.rest_paths()?),
+        "cat" => cat::run(cat::Options::parse(args.rest_strings()?)?),
         "clean" => clean::run(args.rest_paths()?),
         "changes" => changes::run(),
         unknown => Err(format!(
@@ -61,8 +61,8 @@ Usage:\n\
   git secret remove <file>...\n\
   git secret list\n\
   git secret hide [-c] [-F] [-P] [-d] [-m] [-h] [file...]\n\
-  git secret reveal [--force] [file...]\n\
-  git secret cat <file>...\n\
+  git secret reveal [-f] [-F] [-d <gpg-homedir>] [-v] [-p <password>] [-P] [-h] [file...]\n\
+  git secret cat [-d <gpg-homedir>] [-p <password>] <file> [file...]\n\
   git secret clean [file...]\n\
   git secret changes",
         env!("CARGO_PKG_VERSION")

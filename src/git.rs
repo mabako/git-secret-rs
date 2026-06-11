@@ -1,4 +1,3 @@
-use std::env;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
@@ -8,7 +7,6 @@ pub(crate) const SECRET_DIR: &str = ".gitsecret";
 pub(crate) const KEYS_DIR: &str = ".gitsecret/keys";
 pub(crate) const PATHS_DIR: &str = ".gitsecret/paths";
 pub(crate) const MAPPING_FILE: &str = ".gitsecret/paths/mapping.cfg";
-pub(crate) const GPG_PASSPHRASE_ENV: &str = "GIT_SECRET_GPG_PASSPHRASE";
 
 pub(crate) struct RecipientRecord {
     pub(crate) uid: String,
@@ -57,9 +55,18 @@ pub(crate) fn repo_gpg(repo: &Repo) -> Command {
     command
 }
 
-pub(crate) fn user_gpg_with_configured_passphrase() -> Command {
+#[derive(Default)]
+pub(crate) struct UserGpgOptions {
+    pub(crate) homedir: Option<PathBuf>,
+    pub(crate) passphrase: Option<String>,
+}
+
+pub(crate) fn user_gpg(options: &UserGpgOptions) -> Command {
     let mut command = Command::new("gpg");
-    if let Some(passphrase) = env::var_os(GPG_PASSPHRASE_ENV) {
+    if let Some(homedir) = &options.homedir {
+        command.arg("--homedir").arg(homedir);
+    }
+    if let Some(passphrase) = &options.passphrase {
         command
             .arg("--pinentry-mode")
             .arg("loopback")

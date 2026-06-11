@@ -29,8 +29,8 @@ git secret add <file>...
 git secret remove <file>...
 git secret list
 git secret hide [-c] [-F] [-P] [-d] [-m] [-h] [file...]
-git secret reveal [--force] [file...]
-git secret cat <file>...
+git secret reveal [-f] [-F] [-d <gpg-homedir>] [-v] [-p <password>] [-P] [-h] [file...]
+git secret cat [-d <gpg-homedir>] [-p <password>] <file> [file...]
 git secret clean [file...]
 git secret changes
 ```
