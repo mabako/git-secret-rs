@@ -61,9 +61,11 @@ pub(crate) fn repo_gpg(repo: &Repo) -> Command {
     command
 }
 
-#[derive(Default)]
+#[derive(Default, clap::Args)]
 pub(crate) struct UserGpgOptions {
+    #[arg(short = 'd', value_name = "gpg-homedir")]
     pub(crate) homedir: Option<PathBuf>,
+    #[arg(short = 'p', value_name = "password")]
     pub(crate) passphrase: Option<String>,
 }
 

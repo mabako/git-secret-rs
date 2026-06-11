@@ -7,62 +7,28 @@ use crate::paths::{encrypted_path, selected_paths};
 use crate::process::CommandExt;
 use crate::AppResult;
 
+#[derive(clap::Args)]
 pub(crate) struct Options {
+    #[arg(short = 'f')]
     force: bool,
+    #[arg(short = 'F')]
     continue_on_error: bool,
+    #[arg(short = 'v')]
     verbose: bool,
+    #[arg(short = 'P')]
     preserve_permissions: bool,
+    #[arg(short = 'h', long = "help")]
     help: bool,
+    #[command(flatten)]
     gpg: UserGpgOptions,
+    #[arg(value_name = "file")]
     paths: Vec<PathBuf>,
 }
 
+#[cfg(test)]
 impl Options {
     pub(crate) fn parse(args: Vec<String>) -> AppResult<Self> {
-        let mut force = false;
-        let mut continue_on_error = false;
-        let mut verbose = false;
-        let mut preserve_permissions = false;
-        let mut help = false;
-        let mut gpg = UserGpgOptions::default();
-        let mut paths = Vec::new();
-        let mut args = args.into_iter();
-
-        while let Some(arg) = args.next() {
-            match arg.as_str() {
-                "-f" => force = true,
-                "-F" => continue_on_error = true,
-                "-d" => {
-                    let homedir = args
-                        .next()
-                        .ok_or_else(|| "reveal option -d requires a gpg homedir".to_string())?;
-                    gpg.homedir = Some(PathBuf::from(homedir));
-                }
-                "-v" => verbose = true,
-                "-p" => {
-                    let passphrase = args
-                        .next()
-                        .ok_or_else(|| "reveal option -p requires a password".to_string())?;
-                    gpg.passphrase = Some(passphrase);
-                }
-                "-P" => preserve_permissions = true,
-                "-h" | "--help" => help = true,
-                _ if arg.starts_with('-') => {
-                    return Err(format!("unknown reveal option '{}'", arg))
-                }
-                _ => paths.push(PathBuf::from(arg)),
-            }
-        }
-
-        Ok(Self {
-            force,
-            continue_on_error,
-            verbose,
-            preserve_permissions,
-            help,
-            gpg,
-            paths,
-        })
+        super::parse_options("git secret reveal", args)
     }
 }
 

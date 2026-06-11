@@ -8,48 +8,28 @@ use crate::paths::{encrypted_path, selected_paths};
 use crate::process::CommandExt;
 use crate::AppResult;
 
+#[derive(clap::Args)]
 pub(crate) struct Options {
+    #[arg(short = 'c')]
     clean_encrypted: bool,
+    #[arg(short = 'F')]
     continue_missing: bool,
+    #[arg(short = 'P')]
     preserve_permissions: bool,
+    #[arg(short = 'd')]
     delete_plaintext: bool,
+    #[arg(short = 'm')]
     modified_only: bool,
+    #[arg(short = 'h', long = "help")]
     help: bool,
+    #[arg(value_name = "file")]
     paths: Vec<PathBuf>,
 }
 
+#[cfg(test)]
 impl Options {
     pub(crate) fn parse(args: Vec<String>) -> AppResult<Self> {
-        let mut clean_encrypted = false;
-        let mut continue_missing = false;
-        let mut preserve_permissions = false;
-        let mut delete_plaintext = false;
-        let mut modified_only = false;
-        let mut help = false;
-        let mut paths = Vec::new();
-
-        for arg in args {
-            match arg.as_str() {
-                "-c" => clean_encrypted = true,
-                "-F" => continue_missing = true,
-                "-P" => preserve_permissions = true,
-                "-d" => delete_plaintext = true,
-                "-m" => modified_only = true,
-                "-h" | "--help" => help = true,
-                _ if arg.starts_with('-') => return Err(format!("unknown hide option '{}'", arg)),
-                _ => paths.push(PathBuf::from(arg)),
-            }
-        }
-
-        Ok(Self {
-            clean_encrypted,
-            continue_missing,
-            preserve_permissions,
-            delete_plaintext,
-            modified_only,
-            help,
-            paths,
-        })
+        super::parse_options("git secret hide", args)
     }
 }
 

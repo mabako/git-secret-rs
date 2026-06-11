@@ -5,40 +5,20 @@ use crate::paths::{encrypted_path, normalize_secret_path_for_repo};
 use crate::process::CommandExt;
 use crate::AppResult;
 
+#[derive(clap::Args)]
 pub(crate) struct Options {
+    #[command(flatten)]
     gpg: UserGpgOptions,
+    #[arg(value_name = "filename")]
     paths: Vec<PathBuf>,
+    #[arg(short = 'h', long = "help")]
     help: bool,
 }
 
+#[cfg(test)]
 impl Options {
     pub(crate) fn parse(args: Vec<String>) -> AppResult<Self> {
-        let mut gpg = UserGpgOptions::default();
-        let mut paths = Vec::new();
-        let mut help = false;
-        let mut args = args.into_iter();
-
-        while let Some(arg) = args.next() {
-            match arg.as_str() {
-                "-d" => {
-                    let homedir = args
-                        .next()
-                        .ok_or_else(|| "cat option -d requires a gpg homedir".to_string())?;
-                    gpg.homedir = Some(PathBuf::from(homedir));
-                }
-                "-p" => {
-                    let passphrase = args
-                        .next()
-                        .ok_or_else(|| "cat option -p requires a password".to_string())?;
-                    gpg.passphrase = Some(passphrase);
-                }
-                "-h" | "--help" => help = true,
-                _ if arg.starts_with('-') => return Err(format!("unknown cat option '{}'", arg)),
-                _ => paths.push(PathBuf::from(arg)),
-            }
-        }
-
-        Ok(Self { gpg, paths, help })
+        super::parse_options("git secret cat", args)
     }
 }
 

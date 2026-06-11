@@ -1,42 +1,23 @@
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use crate::git::{ensure_initialized, user_gpg, Repo, UserGpgOptions};
 use crate::mapping::Mapping;
 use crate::paths::encrypted_path;
 use crate::AppResult;
 
+#[derive(clap::Args)]
 pub(crate) struct Options {
+    #[command(flatten)]
     gpg: UserGpgOptions,
+    #[arg(short = 'h', long = "help")]
     help: bool,
 }
 
+#[cfg(test)]
 impl Options {
     pub(crate) fn parse(args: Vec<String>) -> AppResult<Self> {
-        let mut gpg = UserGpgOptions::default();
-        let mut help = false;
-        let mut args = args.into_iter();
-
-        while let Some(arg) = args.next() {
-            match arg.as_str() {
-                "-d" => {
-                    let homedir = args
-                        .next()
-                        .ok_or_else(|| "changes option -d requires a gpg homedir".to_string())?;
-                    gpg.homedir = Some(PathBuf::from(homedir));
-                }
-                "-p" => {
-                    let passphrase = args
-                        .next()
-                        .ok_or_else(|| "changes option -p requires a password".to_string())?;
-                    gpg.passphrase = Some(passphrase);
-                }
-                "-h" | "--help" => help = true,
-                _ => return Err(format!("unknown changes option '{}'", arg)),
-            }
-        }
-
-        Ok(Self { gpg, help })
+        super::parse_options("git secret changes", args)
     }
 }
 
@@ -125,6 +106,7 @@ Options:\n\
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
 
     #[test]
     fn changes_options_parse_homedir_password_and_help() {

@@ -5,42 +5,22 @@ use std::process::{Command, Stdio};
 use crate::git::{ensure_initialized, gpg_command, repo_gpg, Repo};
 use crate::AppResult;
 
+#[derive(clap::Args)]
 pub(crate) struct Options {
+    #[arg(short = 'm')]
     use_git_email: bool,
+    #[arg(short = 'd', value_name = "gpg-homedir")]
     gpg_homedir: Option<PathBuf>,
+    #[arg(value_name = "fingerprint-or-key-id-or-email")]
     keys: Vec<String>,
+    #[arg(short = 'h', long = "help")]
     help: bool,
 }
 
+#[cfg(test)]
 impl Options {
     pub(crate) fn parse(args: Vec<String>) -> AppResult<Self> {
-        let mut use_git_email = false;
-        let mut gpg_homedir = None;
-        let mut keys = Vec::new();
-        let mut help = false;
-        let mut args = args.into_iter();
-
-        while let Some(arg) = args.next() {
-            match arg.as_str() {
-                "-m" => use_git_email = true,
-                "-d" => {
-                    let homedir = args
-                        .next()
-                        .ok_or_else(|| "tell option -d requires a gpg homedir".to_string())?;
-                    gpg_homedir = Some(PathBuf::from(homedir));
-                }
-                "-h" | "--help" => help = true,
-                _ if arg.starts_with('-') => return Err(format!("unknown tell option '{}'", arg)),
-                _ => keys.push(arg),
-            }
-        }
-
-        Ok(Self {
-            use_git_email,
-            gpg_homedir,
-            keys,
-            help,
-        })
+        super::parse_options("git secret tell", args)
     }
 }
 

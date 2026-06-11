@@ -1,6 +1,5 @@
 use std::env;
 
-mod args;
 mod commands;
 mod crypto;
 mod git;

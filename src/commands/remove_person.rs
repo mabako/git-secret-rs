@@ -2,27 +2,18 @@ use crate::git::{ensure_initialized, repo_gpg, Repo};
 use crate::process::CommandExt;
 use crate::AppResult;
 
+#[derive(clap::Args)]
 pub(crate) struct Options {
+    #[arg(value_name = "fingerprint-or-key-id-or-email")]
     keys: Vec<String>,
+    #[arg(short = 'h', long = "help")]
     help: bool,
 }
 
+#[cfg(test)]
 impl Options {
     pub(crate) fn parse(args: Vec<String>) -> AppResult<Self> {
-        let mut keys = Vec::new();
-        let mut help = false;
-
-        for arg in args {
-            match arg.as_str() {
-                "-h" | "--help" => help = true,
-                _ if arg.starts_with('-') => {
-                    return Err(format!("unknown removeperson option '{}'", arg))
-                }
-                _ => keys.push(arg),
-            }
-        }
-
-        Ok(Self { keys, help })
+        super::parse_options("git secret removeperson", args)
     }
 }
 

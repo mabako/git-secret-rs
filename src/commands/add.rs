@@ -6,25 +6,18 @@ use crate::mapping::Mapping;
 use crate::paths::normalize_secret_path_for_repo;
 use crate::AppResult;
 
+#[derive(clap::Args)]
 pub(crate) struct Options {
+    #[arg(value_name = "file")]
     paths: Vec<PathBuf>,
+    #[arg(short = 'h', long = "help")]
     help: bool,
 }
 
+#[cfg(test)]
 impl Options {
     pub(crate) fn parse(args: Vec<String>) -> AppResult<Self> {
-        let mut paths = Vec::new();
-        let mut help = false;
-
-        for arg in args {
-            match arg.as_str() {
-                "-h" | "--help" => help = true,
-                _ if arg.starts_with('-') => return Err(format!("unknown add option '{}'", arg)),
-                _ => paths.push(PathBuf::from(arg)),
-            }
-        }
-
-        Ok(Self { paths, help })
+        super::parse_options("git secret add", args)
     }
 }
 

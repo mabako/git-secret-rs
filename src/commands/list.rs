@@ -2,22 +2,16 @@ use crate::git::{ensure_initialized, Repo};
 use crate::mapping::Mapping;
 use crate::AppResult;
 
+#[derive(clap::Args)]
 pub(crate) struct Options {
+    #[arg(short = 'h', long = "help")]
     help: bool,
 }
 
+#[cfg(test)]
 impl Options {
     pub(crate) fn parse(args: Vec<String>) -> AppResult<Self> {
-        let mut help = false;
-
-        for arg in args {
-            match arg.as_str() {
-                "-h" | "--help" => help = true,
-                _ => return Err(format!("unknown list option '{}'", arg)),
-            }
-        }
-
-        Ok(Self { help })
+        super::parse_options("git secret list", args)
     }
 }
 

@@ -11,22 +11,16 @@ const ROOT_GITIGNORE_ENTRIES: &[&str] = &[
 ];
 const ROOT_GITATTRIBUTES_ENTRIES: &[&str] = &["*.secret diff=git-secret"];
 
+#[derive(clap::Args)]
 pub(crate) struct Options {
+    #[arg(short = 'h', long = "help")]
     help: bool,
 }
 
+#[cfg(test)]
 impl Options {
     pub(crate) fn parse(args: Vec<String>) -> AppResult<Self> {
-        let mut help = false;
-
-        for arg in args {
-            match arg.as_str() {
-                "-h" | "--help" => help = true,
-                _ => return Err(format!("unknown init option '{}'", arg)),
-            }
-        }
-
-        Ok(Self { help })
+        super::parse_options("git secret init", args)
     }
 }
 

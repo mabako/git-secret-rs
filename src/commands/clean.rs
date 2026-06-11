@@ -4,25 +4,18 @@ use std::path::{Path, PathBuf};
 use crate::git::{ensure_initialized, Repo};
 use crate::AppResult;
 
+#[derive(clap::Args)]
 pub(crate) struct Options {
+    #[arg(short = 'v')]
     verbose: bool,
+    #[arg(short = 'h', long = "help")]
     help: bool,
 }
 
+#[cfg(test)]
 impl Options {
     pub(crate) fn parse(args: Vec<String>) -> AppResult<Self> {
-        let mut verbose = false;
-        let mut help = false;
-
-        for arg in args {
-            match arg.as_str() {
-                "-v" => verbose = true,
-                "-h" | "--help" => help = true,
-                _ => return Err(format!("unknown clean option '{}'", arg)),
-            }
-        }
-
-        Ok(Self { verbose, help })
+        super::parse_options("git secret clean", args)
     }
 }
 

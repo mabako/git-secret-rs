@@ -4,39 +4,18 @@ use crate::git::{user_gpg, UserGpgOptions};
 use crate::process::CommandExt;
 use crate::AppResult;
 
+#[derive(clap::Args)]
 pub(crate) struct Options {
+    #[command(flatten)]
     gpg: UserGpgOptions,
+    #[arg(value_name = "encrypted-file")]
     paths: Vec<PathBuf>,
 }
 
+#[cfg(test)]
 impl Options {
     pub(crate) fn parse(args: Vec<String>) -> AppResult<Self> {
-        let mut gpg = UserGpgOptions::default();
-        let mut paths = Vec::new();
-        let mut args = args.into_iter();
-
-        while let Some(arg) = args.next() {
-            match arg.as_str() {
-                "-d" => {
-                    let homedir = args
-                        .next()
-                        .ok_or_else(|| "textconv option -d requires a gpg homedir".to_string())?;
-                    gpg.homedir = Some(PathBuf::from(homedir));
-                }
-                "-p" => {
-                    let passphrase = args
-                        .next()
-                        .ok_or_else(|| "textconv option -p requires a password".to_string())?;
-                    gpg.passphrase = Some(passphrase);
-                }
-                _ if arg.starts_with('-') => {
-                    return Err(format!("unknown textconv option '{}'", arg))
-                }
-                _ => paths.push(PathBuf::from(arg)),
-            }
-        }
-
-        Ok(Self { gpg, paths })
+        super::parse_options("git secret textconv", args)
     }
 }
 

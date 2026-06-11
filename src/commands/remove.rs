@@ -6,34 +6,20 @@ use crate::mapping::Mapping;
 use crate::paths::{encrypted_path, normalize_secret_path_for_repo};
 use crate::AppResult;
 
+#[derive(clap::Args)]
 pub(crate) struct Options {
+    #[arg(short = 'c')]
     clean_encrypted: bool,
+    #[arg(short = 'h', long = "help")]
     help: bool,
+    #[arg(value_name = "file")]
     paths: Vec<PathBuf>,
 }
 
+#[cfg(test)]
 impl Options {
     pub(crate) fn parse(args: Vec<String>) -> AppResult<Self> {
-        let mut clean_encrypted = false;
-        let mut help = false;
-        let mut paths = Vec::new();
-
-        for arg in args {
-            match arg.as_str() {
-                "-c" => clean_encrypted = true,
-                "-h" | "--help" => help = true,
-                _ if arg.starts_with('-') => {
-                    return Err(format!("unknown remove option '{}'", arg))
-                }
-                _ => paths.push(PathBuf::from(arg)),
-            }
-        }
-
-        Ok(Self {
-            clean_encrypted,
-            help,
-            paths,
-        })
+        super::parse_options("git secret remove", args)
     }
 }
 

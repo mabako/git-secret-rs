@@ -1,25 +1,18 @@
 use crate::git::{ensure_initialized, recipient_records, Repo};
 use crate::AppResult;
 
+#[derive(clap::Args)]
 pub(crate) struct Options {
+    #[arg(short = 'l')]
     long: bool,
+    #[arg(short = 'h', long = "help")]
     help: bool,
 }
 
+#[cfg(test)]
 impl Options {
     pub(crate) fn parse(args: Vec<String>) -> AppResult<Self> {
-        let mut long = false;
-        let mut help = false;
-
-        for arg in args {
-            match arg.as_str() {
-                "-l" => long = true,
-                "-h" | "--help" => help = true,
-                _ => return Err(format!("unknown whoknows option '{}'", arg)),
-            }
-        }
-
-        Ok(Self { long, help })
+        super::parse_options("git secret whoknows", args)
     }
 }
 
