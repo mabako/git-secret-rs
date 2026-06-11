@@ -73,6 +73,10 @@ pub(crate) fn run_success(command: &mut Command) -> Output {
 }
 
 pub(crate) fn gpg_command() -> Command {
+    if let Some(secrets_gpg_command) = std::env::var_os("SECRETS_GPG_COMMAND") {
+        return Command::new(PathBuf::from(secrets_gpg_command));
+    }
+
     if std::env::var("MSYSTEM").ok().as_deref() == Some("MINGW64") {
         if let Some(program_files_x86) = std::env::var_os("ProgramFiles(x86)") {
             return Command::new(
