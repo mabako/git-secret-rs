@@ -46,14 +46,14 @@ pub(crate) fn ensure_initialized(repo: &Repo) -> AppResult<()> {
     Ok(())
 }
 
-pub(crate) fn gpg(repo: &Repo) -> Command {
+pub(crate) fn repo_gpg(repo: &Repo) -> Command {
     let mut command = Command::new("gpg");
     command.arg("--homedir").arg(repo.join(KEYS_DIR));
     command
 }
 
-pub(crate) fn gpg_with_configured_passphrase(repo: &Repo) -> Command {
-    let mut command = gpg(repo);
+pub(crate) fn user_gpg_with_configured_passphrase() -> Command {
+    let mut command = Command::new("gpg");
     if let Some(passphrase) = env::var_os(GPG_PASSPHRASE_ENV) {
         command
             .arg("--pinentry-mode")
@@ -65,7 +65,7 @@ pub(crate) fn gpg_with_configured_passphrase(repo: &Repo) -> Command {
 }
 
 pub(crate) fn recipient_key_ids(repo: &Repo) -> AppResult<Vec<String>> {
-    let output = gpg(repo)
+    let output = repo_gpg(repo)
         .arg("--with-colons")
         .arg("--list-keys")
         .stdout(Stdio::piped())
@@ -92,7 +92,7 @@ pub(crate) fn recipient_key_ids(repo: &Repo) -> AppResult<Vec<String>> {
 }
 
 pub(crate) fn recipient_ids(repo: &Repo) -> AppResult<Vec<String>> {
-    let output = gpg(repo)
+    let output = repo_gpg(repo)
         .arg("--with-colons")
         .arg("--list-keys")
         .stdout(Stdio::piped())

@@ -54,9 +54,9 @@ fn print_usage() {
 \n\
 Usage:\n\
   git secret init\n\
-  git secret tell <key-id-or-email>...\n\
+  git secret tell <fingerprint-or-key-id-or-email>...\n\
   git secret whoknows\n\
-  git secret removeperson <key-id-or-email>...\n\
+  git secret removeperson <fingerprint-or-key-id-or-email>...\n\
   git secret add <file>...\n\
   git secret remove <file>...\n\
   git secret list\n\

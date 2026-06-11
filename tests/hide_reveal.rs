@@ -4,17 +4,21 @@ use std::process::Command;
 
 mod support;
 
-use support::{run_success, TempRepo};
+use support::{fixture_path, run_success, TempDir, TempRepo};
 
-const DEFAULT_PUBLIC_KEY: &str = "tests/fixtures/keys/public.key";
-const DEFAULT_PRIVATE_KEY: &str = "tests/fixtures/keys/private.key";
 const KEY_PASSPHRASE: &str = "user1pass";
 const PASSPHRASE_ENV: &str = "GIT_SECRET_GPG_PASSPHRASE";
 
 #[test]
 fn hide_and_reveal_round_trip_with_supplied_keys() {
-    let public_key = key_path("GIT_SECRET_TEST_PUBLIC_KEY", DEFAULT_PUBLIC_KEY);
-    let private_key = key_path("GIT_SECRET_TEST_PRIVATE_KEY", DEFAULT_PRIVATE_KEY);
+    let public_key = key_path(
+        "GIT_SECRET_TEST_PUBLIC_KEY",
+        fixture_path("keys/public.key"),
+    );
+    let private_key = key_path(
+        "GIT_SECRET_TEST_PRIVATE_KEY",
+        fixture_path("keys/private.key"),
+    );
     assert!(
         public_key.is_file(),
         "public key fixture does not exist: {}",
@@ -35,7 +39,9 @@ fn hide_and_reveal_round_trip_with_supplied_keys() {
     );
 
     let keyring = repo.path().join(".gitsecret").join("keys");
-    import_public_and_private_keys(&keyring, &public_key, &private_key);
+    import_public_key_to_repo_keyring(&keyring, &public_key);
+    let user_gpg_home = TempDir::new("guser");
+    import_private_key_to_user_keyring(user_gpg_home.path(), &private_key);
 
     let secret_path = repo.path().join("secret.txt");
     fs::write(&secret_path, "the launch code is swordfish")
@@ -69,6 +75,7 @@ fn hide_and_reveal_round_trip_with_supplied_keys() {
     run_success(
         Command::new(env!("CARGO_BIN_EXE_git-secret"))
             .arg("reveal")
+            .env("GNUPGHOME", user_gpg_home.path())
             .env(PASSPHRASE_ENV, KEY_PASSPHRASE)
             .current_dir(repo.path()),
     );
@@ -79,7 +86,7 @@ fn hide_and_reveal_round_trip_with_supplied_keys() {
     );
 }
 
-fn import_public_and_private_keys(keyring: &PathBuf, public_key: &PathBuf, private_key: &PathBuf) {
+fn import_public_key_to_repo_keyring(keyring: &PathBuf, public_key: &PathBuf) {
     run_success(
         Command::new("gpg")
             .arg("--homedir")
@@ -88,6 +95,9 @@ fn import_public_and_private_keys(keyring: &PathBuf, public_key: &PathBuf, priva
             .arg("--import")
             .arg(public_key),
     );
+}
+
+fn import_private_key_to_user_keyring(keyring: &std::path::Path, private_key: &PathBuf) {
     run_success(
         Command::new("gpg")
             .arg("--homedir")
@@ -102,10 +112,10 @@ fn import_public_and_private_keys(keyring: &PathBuf, public_key: &PathBuf, priva
     );
 }
 
-fn key_path(env_name: &str, default: &str) -> PathBuf {
+fn key_path(env_name: &str, default: PathBuf) -> PathBuf {
     if let Some(path) = std::env::var_os(env_name) {
         return PathBuf::from(path);
     }
 
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(default)
+    default
 }

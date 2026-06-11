@@ -1,6 +1,6 @@
 use std::fs;
 
-use crate::git::{gpg, Repo, KEYS_DIR, MAPPING_FILE, PATHS_DIR, SECRET_DIR};
+use crate::git::{repo_gpg, Repo, KEYS_DIR, MAPPING_FILE, PATHS_DIR, SECRET_DIR};
 use crate::process::CommandExt;
 use crate::AppResult;
 
@@ -23,7 +23,7 @@ pub(crate) fn run() -> AppResult<()> {
         .map_err(|e| format!("write {}: {}", key_gitignore.display(), e))?;
     }
 
-    gpg(&repo)
+    repo_gpg(&repo)
         .arg("--list-keys")
         .status_ok("initialize repository keyring")?;
 

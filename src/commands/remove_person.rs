@@ -1,17 +1,17 @@
-use crate::git::{ensure_initialized, gpg, Repo};
+use crate::git::{ensure_initialized, repo_gpg, Repo};
 use crate::process::CommandExt;
 use crate::AppResult;
 
 pub(crate) fn run(keys: Vec<String>) -> AppResult<()> {
     if keys.is_empty() {
-        return Err("removeperson requires at least one key id or email".to_string());
+        return Err("removeperson requires at least one fingerprint, key id, or email".to_string());
     }
 
     let repo = Repo::discover()?;
     ensure_initialized(&repo)?;
 
     for key in keys {
-        gpg(&repo)
+        repo_gpg(&repo)
             .arg("--batch")
             .arg("--yes")
             .arg("--delete-keys")

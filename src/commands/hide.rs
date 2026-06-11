@@ -2,7 +2,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use crate::crypto::sha256_file;
-use crate::git::{ensure_initialized, gpg, recipient_key_ids, Repo};
+use crate::git::{ensure_initialized, recipient_key_ids, repo_gpg, Repo};
 use crate::mapping::Mapping;
 use crate::paths::{encrypted_path, selected_paths};
 use crate::process::CommandExt;
@@ -62,7 +62,7 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
             ));
         }
 
-        let mut cmd = gpg(&repo);
+        let mut cmd = repo_gpg(&repo);
         cmd.arg("--batch")
             .arg("--yes")
             .arg("--trust-model")
