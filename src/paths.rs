@@ -7,6 +7,9 @@ use crate::git::Repo;
 use crate::mapping::Mapping;
 use crate::AppResult;
 
+const DEFAULT_SECRET_EXTENSION: &str = ".secret";
+const SECRETS_EXTENSION_ENV: &str = "SECRETS_EXTENSION";
+
 pub(crate) fn selected_paths(
     repo: &Repo,
     mapping: &Mapping,
@@ -23,7 +26,21 @@ pub(crate) fn selected_paths(
 }
 
 pub(crate) fn encrypted_path(repo: &Repo, path: &str) -> PathBuf {
-    repo.join(format!("{}.secret", path))
+    repo.join(format!("{}{}", path, secret_extension()))
+}
+
+pub(crate) fn secret_extension() -> String {
+    std::env::var(SECRETS_EXTENSION_ENV)
+        .ok()
+        .filter(|extension| is_valid_secret_extension(extension))
+        .unwrap_or_else(|| DEFAULT_SECRET_EXTENSION.to_string())
+}
+
+fn is_valid_secret_extension(extension: &str) -> bool {
+    extension.starts_with('.')
+        && extension.len() > 1
+        && !extension.contains('/')
+        && !extension.contains('\\')
 }
 
 pub(crate) fn normalize_secret_path_for_repo(repo: &Repo, path: &Path) -> AppResult<String> {
@@ -94,8 +111,8 @@ pub(crate) fn normalize_secret_path(path: &Path) -> AppResult<String> {
     }
 
     let normalized = pieces.join("/");
-    if normalized.ends_with(".secret") {
-        return Err("add the plaintext path, not the .secret file".to_string());
+    if normalized.ends_with(&secret_extension()) {
+        return Err("add the plaintext path, not the encrypted file".to_string());
     }
 
     Ok(normalized)

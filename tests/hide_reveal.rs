@@ -148,6 +148,34 @@ fn hide_and_reveal_round_trip_with_supplied_keys() {
     );
     assert_eq!(String::from_utf8_lossy(&textconv_output.stderr), "");
 
+    let custom_encrypted_path = repo.path().join("secret.txt.enc");
+    run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("hide")
+            .env("SECRETS_EXTENSION", ".enc")
+            .current_dir(repo.path()),
+    );
+    assert!(
+        custom_encrypted_path.is_file(),
+        "{} should exist",
+        custom_encrypted_path.display()
+    );
+    let custom_cat_output = run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("cat")
+            .arg("-d")
+            .arg(user_gpg_home.path())
+            .arg("-p")
+            .arg(KEY_PASSPHRASE)
+            .arg("secret.txt")
+            .env("SECRETS_EXTENSION", ".enc")
+            .current_dir(repo.path()),
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&custom_cat_output.stdout),
+        "the launch code changed"
+    );
+
     let changes_output = run_success(
         Command::new(env!("CARGO_BIN_EXE_git-secret"))
             .arg("changes")

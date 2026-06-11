@@ -1,15 +1,12 @@
 use std::fs;
 
 use crate::git::{repo_gpg, Repo, KEYS_DIR, MAPPING_FILE, PATHS_DIR, SECRET_DIR};
+use crate::paths::secret_extension;
 use crate::process::CommandExt;
 use crate::AppResult;
 
-const ROOT_GITIGNORE_ENTRIES: &[&str] = &[
-    ".gitsecret/keys/random_seed",
-    ".gitsecret/keys/*.lock",
-    "!*.secret",
-];
-const ROOT_GITATTRIBUTES_ENTRIES: &[&str] = &["*.secret diff=git-secret"];
+const ROOT_GITIGNORE_STATIC_ENTRIES: &[&str] =
+    &[".gitsecret/keys/random_seed", ".gitsecret/keys/*.lock"];
 
 #[derive(clap::Args)]
 pub(crate) struct Options {}
@@ -26,8 +23,11 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
         fs::write(&mapping, "").map_err(|e| format!("write {}: {}", mapping.display(), e))?;
     }
 
-    add_lines_to_root_gitignore(&repo, ROOT_GITIGNORE_ENTRIES)?;
-    add_lines_to_root_file(&repo, ".gitattributes", ROOT_GITATTRIBUTES_ENTRIES)?;
+    let extension = secret_extension();
+    let gitignore_entries = root_gitignore_entries(&extension);
+    let gitattributes_entries = root_gitattributes_entries(&extension);
+    add_lines_to_root_gitignore(&repo, &gitignore_entries)?;
+    add_lines_to_root_file(&repo, ".gitattributes", &gitattributes_entries)?;
     configure_diff_driver()?;
 
     repo_gpg(&repo)
@@ -38,11 +38,23 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
     Ok(())
 }
 
-fn add_lines_to_root_gitignore(repo: &Repo, entries: &[&str]) -> AppResult<()> {
+fn root_gitignore_entries(extension: &str) -> Vec<String> {
+    ROOT_GITIGNORE_STATIC_ENTRIES
+        .iter()
+        .map(|entry| (*entry).to_string())
+        .chain(std::iter::once(format!("!*{}", extension)))
+        .collect()
+}
+
+fn root_gitattributes_entries(extension: &str) -> Vec<String> {
+    vec![format!("*{} diff=git-secret", extension)]
+}
+
+fn add_lines_to_root_gitignore(repo: &Repo, entries: &[String]) -> AppResult<()> {
     add_lines_to_root_file(repo, ".gitignore", entries)
 }
 
-fn add_lines_to_root_file(repo: &Repo, file: &str, entries: &[&str]) -> AppResult<()> {
+fn add_lines_to_root_file(repo: &Repo, file: &str, entries: &[String]) -> AppResult<()> {
     let path = repo.join(file);
     let content = match fs::read_to_string(&path) {
         Ok(content) => content,
@@ -53,7 +65,7 @@ fn add_lines_to_root_file(repo: &Repo, file: &str, entries: &[&str]) -> AppResul
     let mut updated = content;
     let mut changed = false;
     for entry in entries {
-        if updated.lines().any(|line| line.trim() == *entry) {
+        if updated.lines().any(|line| line.trim() == entry.as_str()) {
             continue;
         }
         if !updated.is_empty() && !updated.ends_with('\n') {

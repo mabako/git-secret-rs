@@ -56,6 +56,25 @@ fn clean_deletes_secret_files_quietly_unless_verbose() {
     let env_verbose = String::from_utf8_lossy(&env_verbose.stdout);
     assert!(env_verbose.contains("removed root.txt.secret"));
 
+    let custom_secret = repo.path().join("custom.txt.enc");
+    let default_secret = repo.path().join("default.txt.secret");
+    fs::write(&custom_secret, "custom encrypted").expect("custom secret should be written");
+    fs::write(&default_secret, "default encrypted").expect("default secret should be written");
+    let custom_extension = run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("clean")
+            .arg("-v")
+            .env("SECRETS_EXTENSION", ".enc")
+            .current_dir(repo.path()),
+    );
+    let custom_extension = String::from_utf8_lossy(&custom_extension.stdout);
+    assert!(custom_extension.contains("removed custom.txt.enc"));
+    assert!(!custom_secret.exists());
+    assert!(
+        default_secret.exists(),
+        "clean with a custom extension should not remove default .secret files"
+    );
+
     let help = run_success(
         Command::new(env!("CARGO_BIN_EXE_git-secret"))
             .arg("clean")

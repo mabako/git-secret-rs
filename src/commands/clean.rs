@@ -2,6 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::git::{ensure_initialized, Repo};
+use crate::paths::secret_extension;
 use crate::AppResult;
 
 #[derive(clap::Args)]
@@ -13,7 +14,7 @@ pub(crate) struct Options {
 pub(crate) fn run(options: Options) -> AppResult<()> {
     let repo = Repo::discover()?;
     ensure_initialized(&repo)?;
-    let secret_files = secret_files(repo.root())?;
+    let secret_files = secret_files(repo.root(), &secret_extension())?;
     let verbose = options.verbose || super::secrets_verbose();
 
     for path in secret_files {
@@ -26,13 +27,13 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
     Ok(())
 }
 
-fn secret_files(root: &Path) -> AppResult<Vec<PathBuf>> {
+fn secret_files(root: &Path, extension: &str) -> AppResult<Vec<PathBuf>> {
     let mut files = Vec::new();
-    collect_secret_files(root, &mut files)?;
+    collect_secret_files(root, extension, &mut files)?;
     Ok(files)
 }
 
-fn collect_secret_files(path: &Path, files: &mut Vec<PathBuf>) -> AppResult<()> {
+fn collect_secret_files(path: &Path, extension: &str, files: &mut Vec<PathBuf>) -> AppResult<()> {
     for entry in fs::read_dir(path).map_err(|e| format!("read {}: {}", path.display(), e))? {
         let entry = entry.map_err(|e| format!("read {} entry: {}", path.display(), e))?;
         let path = entry.path();
@@ -41,13 +42,13 @@ fn collect_secret_files(path: &Path, files: &mut Vec<PathBuf>) -> AppResult<()> 
             .map_err(|e| format!("read {} type: {}", path.display(), e))?;
         if file_type.is_dir() {
             if entry.file_name() != ".git" {
-                collect_secret_files(&path, files)?;
+                collect_secret_files(&path, extension, files)?;
             }
         } else if file_type.is_file()
             && path
                 .file_name()
                 .and_then(|name| name.to_str())
-                .is_some_and(|name| name.ends_with(".secret"))
+                .is_some_and(|name| name.ends_with(extension))
         {
             files.push(path);
         }

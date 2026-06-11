@@ -197,3 +197,26 @@ fn init_adds_gitattributes_diff_driver_without_duplicates() {
         "git-secret textconv"
     );
 }
+
+#[test]
+fn init_uses_custom_secrets_extension_for_git_files() {
+    let repo = TempRepo::new("git-secret-init-extension");
+    run_success(Command::new("git").arg("init").arg(repo.path()));
+
+    run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("init")
+            .env("SECRETS_EXTENSION", ".enc")
+            .current_dir(repo.path()),
+    );
+
+    let gitignore =
+        fs::read_to_string(repo.path().join(".gitignore")).expect(".gitignore should be readable");
+    assert!(gitignore.contains("!*.enc\n"));
+    assert!(!gitignore.contains("!*.secret\n"));
+
+    let gitattributes = fs::read_to_string(repo.path().join(".gitattributes"))
+        .expect(".gitattributes should be readable");
+    assert!(gitattributes.contains("*.enc diff=git-secret\n"));
+    assert!(!gitattributes.contains("*.secret diff=git-secret\n"));
+}

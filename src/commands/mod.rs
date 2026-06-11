@@ -87,7 +87,7 @@ enum Command {
     /// shows changes between the current versions of secret files and encrypted versions.
     Changes(changes::Options),
 
-    /// deletes all files in the current git-secret repo that end with .secret.
+    /// deletes encrypted files in the current git-secret repo.
     Clean(clean::Options),
 
     /// writes an encrypted version of each file added by git-secret-add command.
