@@ -45,8 +45,8 @@ pub(crate) fn run(args: Vec<OsString>) -> AppResult<()> {
     match cli.command.expect("command should be handled above") {
         Command::Init(options) => init::run(options),
         Command::Tell(options) => tell::run(options).map(|_| ()),
-        Command::Whoknows(options) => whoknows::run(options),
-        Command::Removeperson(options) => remove_person::run(options),
+        Command::WhoKnows(options) => whoknows::run(options),
+        Command::RemovePerson(options) => remove_person::run(options),
         Command::Add(options) => add::run(options),
         Command::Remove(options) => remove::run(options),
         Command::List(options) => list::run(options),
@@ -89,7 +89,7 @@ enum Command {
 
     /// removes public keys for passed email addresses or GPG fingerprints from repo’s git-secret keyring.
     #[command(alias = "killperson")]
-    Removeperson(remove_person::Options),
+    RemovePerson(remove_person::Options),
 
     /// print the files currently considered secret in this repo.
     List(list::Options),
@@ -104,7 +104,7 @@ enum Command {
     Tell(tell::Options),
 
     /// print email addresses allowed to access the secrets in this repo.
-    Whoknows(whoknows::Options),
+    WhoKnows(whoknows::Options),
 
     #[command(hide = true)]
     Textconv(textconv::Options),
