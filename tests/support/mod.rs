@@ -103,6 +103,32 @@ pub(crate) fn gpg_command() -> Command {
     Command::new("gpg")
 }
 
+pub(crate) fn import_public_key(homedir: &Path, key: &Path) {
+    let output = gpg_command()
+        .arg("--homedir")
+        .arg(homedir)
+        .arg("--batch")
+        .arg("--status-fd")
+        .arg("1")
+        .arg("--import")
+        .arg(key)
+        .output()
+        .expect("gpg import command should run");
+    assert!(
+        output.status.success() || gpg_import_succeeded(&output.stdout),
+        "gpg public key import failed with {}\nstdout:\n{}\nstderr:\n{}",
+        output.status,
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+fn gpg_import_succeeded(stdout: &[u8]) -> bool {
+    String::from_utf8_lossy(stdout)
+        .lines()
+        .any(|line| line.starts_with("[GNUPG:] IMPORT_OK "))
+}
+
 pub(crate) fn fixture_path(path: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests")
