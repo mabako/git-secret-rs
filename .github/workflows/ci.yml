@@ -40,15 +40,22 @@ jobs:
             brew install gnupg
           fi
 
-      - name: Install GnuPG on Windows
+      - name: Configure GnuPG on Windows
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          choco install gnupg -y --no-progress
-          $gpgPath = "${env:ProgramFiles(x86)}\GnuPG\bin"
-          if (Test-Path $gpgPath) {
-            Add-Content -Path $env:GITHUB_PATH -Value $gpgPath
+          $gpg = Join-Path $env:ProgramFiles "Git\usr\bin\gpg.exe"
+          if (-not (Test-Path $gpg)) {
+            $command = Get-Command gpg.exe -ErrorAction SilentlyContinue
+            if ($command) {
+              $gpg = $command.Source
+            }
           }
+          if (-not (Test-Path $gpg)) {
+            throw "Could not find gpg.exe"
+          }
+          Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $gpg)
+          Add-Content -Path $env:GITHUB_ENV -Value "SECRETS_GPG_COMMAND=$gpg"
 
       - name: Show tool versions
         run: |
