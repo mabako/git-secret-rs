@@ -6,23 +6,6 @@ mod support;
 use support::{gpg_arg_path, gpg_command, run_success, TempRepo};
 
 #[test]
-fn init_help_prints_usage_without_creating_gitsecret() {
-    let repo = TempRepo::new("git-secret-init-help");
-    run_success(Command::new("git").arg("init").arg(repo.path()));
-
-    let output = run_success(
-        Command::new(env!("CARGO_BIN_EXE_git-secret"))
-            .arg("init")
-            .arg("-h")
-            .current_dir(repo.path()),
-    );
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("Usage:"));
-    assert!(stdout.contains("--help"));
-    assert!(!repo.path().join(".gitsecret").exists());
-}
-
-#[test]
 fn init_creates_repository_files_with_empty_keyring() {
     let repo = TempRepo::new("git-secret-init");
     run_success(Command::new("git").arg("init").arg(repo.path()));

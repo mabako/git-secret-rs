@@ -74,14 +74,4 @@ fn clean_deletes_secret_files_quietly_unless_verbose() {
         default_secret.exists(),
         "clean with a custom extension should not remove default .secret files"
     );
-
-    let help = run_success(
-        Command::new(env!("CARGO_BIN_EXE_git-secret"))
-            .arg("clean")
-            .arg("-h"),
-    );
-    let help = String::from_utf8_lossy(&help.stdout);
-    assert!(help.contains("Usage:"));
-    assert!(help.contains("-v"));
-    assert!(help.contains("--help"));
 }

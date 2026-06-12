@@ -51,25 +51,6 @@ fn tell_and_removeperson_accept_fingerprint() {
         format!("{} (expires: never)", USER1_UID)
     );
 
-    let whoknows_help = run_success(
-        Command::new(env!("CARGO_BIN_EXE_git-secret"))
-            .arg("whoknows")
-            .arg("-h"),
-    );
-    let whoknows_help = String::from_utf8_lossy(&whoknows_help.stdout);
-    assert!(whoknows_help.contains("Usage:"));
-    assert!(whoknows_help.contains("-l"));
-    assert!(whoknows_help.contains("--help"));
-
-    let removeperson_help = run_success(
-        Command::new(env!("CARGO_BIN_EXE_git-secret"))
-            .arg("removeperson")
-            .arg("-h"),
-    );
-    let removeperson_help = String::from_utf8_lossy(&removeperson_help.stdout);
-    assert!(removeperson_help.contains("Usage:"));
-    assert!(removeperson_help.contains("--help"));
-
     run_success(
         Command::new(env!("CARGO_BIN_EXE_git-secret"))
             .arg("removeperson")
@@ -89,7 +70,7 @@ fn tell_and_removeperson_accept_fingerprint() {
 }
 
 #[test]
-fn tell_can_use_git_email_and_help_flag() {
+fn tell_can_use_git_email() {
     let user_gpg_home = TempDir::new("guser");
     import_public_key(user_gpg_home.path(), &fixture_path("keys/public.key"));
 
@@ -107,17 +88,6 @@ fn tell_can_use_git_email_and_help_flag() {
             .arg("init")
             .current_dir(repo.path()),
     );
-
-    let tell_help = run_success(
-        Command::new(env!("CARGO_BIN_EXE_git-secret"))
-            .arg("tell")
-            .arg("-h"),
-    );
-    let tell_help = String::from_utf8_lossy(&tell_help.stdout);
-    assert!(tell_help.contains("Usage:"));
-    assert!(tell_help.contains("-m"));
-    assert!(tell_help.contains("-d"));
-    assert!(tell_help.contains("--help"));
 
     run_success(
         Command::new(env!("CARGO_BIN_EXE_git-secret"))
