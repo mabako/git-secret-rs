@@ -4,7 +4,9 @@ use std::process::Command;
 
 mod support;
 
-use support::{fixture_path, gpg_command, run_success, TempDir, TempRepo};
+use support::{
+    fixture_path, gpg_arg_path, gpg_command, import_public_key, run_success, TempDir, TempRepo,
+};
 
 const KEY_PASSPHRASE: &str = "user1pass";
 
@@ -321,28 +323,21 @@ fn hide_and_reveal_round_trip_with_supplied_keys() {
 }
 
 fn import_public_key_to_repo_keyring(keyring: &PathBuf, public_key: &PathBuf) {
-    run_success(
-        gpg_command()
-            .arg("--homedir")
-            .arg(keyring)
-            .arg("--batch")
-            .arg("--import")
-            .arg(public_key),
-    );
+    import_public_key(keyring, public_key);
 }
 
 fn import_private_key_to_user_keyring(keyring: &std::path::Path, private_key: &PathBuf) {
     run_success(
         gpg_command()
             .arg("--homedir")
-            .arg(keyring)
+            .arg(gpg_arg_path(keyring))
             .arg("--batch")
             .arg("--pinentry-mode")
             .arg("loopback")
             .arg("--passphrase")
             .arg(KEY_PASSPHRASE)
             .arg("--import")
-            .arg(private_key),
+            .arg(gpg_arg_path(private_key)),
     );
 }
 

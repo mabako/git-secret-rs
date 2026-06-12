@@ -2,7 +2,7 @@ use std::process::Command;
 
 mod support;
 
-use support::{fixture_path, gpg_command, run_success, TempDir, TempRepo};
+use support::{fixture_path, import_public_key, run_success, TempDir, TempRepo};
 
 const USER1_FINGERPRINT: &str = "CE82DD3AFC167295F9132371D2805A4182E99FF4";
 const USER1_UID: &str = "user1 <user1@gitsecret.io>";
@@ -10,14 +10,7 @@ const USER1_UID: &str = "user1 <user1@gitsecret.io>";
 #[test]
 fn tell_and_removeperson_accept_fingerprint() {
     let user_gpg_home = TempDir::new("guser");
-    run_success(
-        gpg_command()
-            .arg("--homedir")
-            .arg(user_gpg_home.path())
-            .arg("--batch")
-            .arg("--import")
-            .arg(fixture_path("keys/public.key")),
-    );
+    import_public_key(user_gpg_home.path(), &fixture_path("keys/public.key"));
 
     let repo = TempRepo::new("gstr");
     run_success(Command::new("git").arg("init").arg(repo.path()));
@@ -98,14 +91,7 @@ fn tell_and_removeperson_accept_fingerprint() {
 #[test]
 fn tell_can_use_git_email_and_help_flag() {
     let user_gpg_home = TempDir::new("guser");
-    run_success(
-        gpg_command()
-            .arg("--homedir")
-            .arg(user_gpg_home.path())
-            .arg("--batch")
-            .arg("--import")
-            .arg(fixture_path("keys/public.key")),
-    );
+    import_public_key(user_gpg_home.path(), &fixture_path("keys/public.key"));
 
     let repo = TempRepo::new("gstm");
     run_success(Command::new("git").arg("init").arg(repo.path()));
