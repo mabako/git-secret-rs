@@ -160,7 +160,9 @@ pub(crate) fn gpg_arg_path(path: &Path) -> OsString {
 }
 
 pub(crate) fn gpg_needs_msys_paths() -> bool {
-    gpg_program_needs_msys_paths(&gpg_program_from_env())
+    let program = gpg_program_from_env();
+    gpg_program_needs_msys_paths(&program)
+        || (program == PathBuf::from("gpg") && env::var_os("MSYSTEM").is_some())
 }
 
 fn gpg_program_from_env() -> PathBuf {

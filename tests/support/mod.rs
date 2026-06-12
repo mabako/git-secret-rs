@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
@@ -85,33 +86,90 @@ pub(crate) fn run_success(command: &mut Command) -> Output {
 }
 
 pub(crate) fn gpg_command() -> Command {
+    Command::new(gpg_program())
+}
+
+fn gpg_program() -> PathBuf {
     if let Some(secrets_gpg_command) = std::env::var_os("SECRETS_GPG_COMMAND") {
-        return Command::new(PathBuf::from(secrets_gpg_command));
+        return PathBuf::from(secrets_gpg_command);
     }
 
     if std::env::var("MSYSTEM").ok().as_deref() == Some("MINGW64") {
         if let Some(program_files_x86) = std::env::var_os("ProgramFiles(x86)") {
-            return Command::new(
-                PathBuf::from(program_files_x86)
-                    .join("GnuPG")
-                    .join("bin")
-                    .join("gpg.exe"),
-            );
+            return PathBuf::from(program_files_x86)
+                .join("GnuPG")
+                .join("bin")
+                .join("gpg.exe");
         }
     }
 
-    Command::new("gpg")
+    PathBuf::from("gpg")
+}
+
+pub(crate) fn gpg_arg_path(path: &Path) -> OsString {
+    if gpg_uses_msys_paths() {
+        return msys_path(path).unwrap_or_else(|| path.as_os_str().to_os_string());
+    }
+
+    path.as_os_str().to_os_string()
+}
+
+fn gpg_uses_msys_paths() -> bool {
+    let program = gpg_program();
+    if gpg_program_needs_msys_paths(&program) {
+        return true;
+    }
+
+    program == PathBuf::from("gpg") && std::env::var_os("MSYSTEM").is_some()
+}
+
+fn gpg_program_needs_msys_paths(program: &Path) -> bool {
+    let Some(file_name) = program.file_name() else {
+        return false;
+    };
+    let file_name = file_name.to_string_lossy();
+    if !file_name.eq_ignore_ascii_case("gpg") && !file_name.eq_ignore_ascii_case("gpg.exe") {
+        return false;
+    }
+
+    let mut components = program
+        .components()
+        .map(|component| component.as_os_str().to_string_lossy().to_string())
+        .collect::<Vec<_>>();
+    if components.len() < 3 {
+        return false;
+    }
+
+    components.reverse();
+    components[1].eq_ignore_ascii_case("bin") && components[2].eq_ignore_ascii_case("usr")
+}
+
+#[cfg(windows)]
+fn msys_path(path: &Path) -> Option<OsString> {
+    let path = path.to_string_lossy().replace('\\', "/");
+    let bytes = path.as_bytes();
+    if bytes.len() < 3 || !bytes[0].is_ascii_alphabetic() || bytes[1] != b':' || bytes[2] != b'/' {
+        return None;
+    }
+
+    let drive = (bytes[0] as char).to_ascii_lowercase();
+    Some(OsString::from(format!("/{drive}{}", &path[2..])))
+}
+
+#[cfg(not(windows))]
+fn msys_path(_path: &Path) -> Option<OsString> {
+    None
 }
 
 pub(crate) fn import_public_key(homedir: &Path, key: &Path) {
     let output = gpg_command()
         .arg("--homedir")
-        .arg(homedir)
+        .arg(gpg_arg_path(homedir))
         .arg("--batch")
         .arg("--status-fd")
         .arg("1")
         .arg("--import")
-        .arg(key)
+        .arg(gpg_arg_path(key))
         .output()
         .expect("gpg import command should run");
     assert!(

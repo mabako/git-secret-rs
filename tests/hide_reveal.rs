@@ -4,7 +4,9 @@ use std::process::Command;
 
 mod support;
 
-use support::{fixture_path, gpg_command, import_public_key, run_success, TempDir, TempRepo};
+use support::{
+    fixture_path, gpg_arg_path, gpg_command, import_public_key, run_success, TempDir, TempRepo,
+};
 
 const KEY_PASSPHRASE: &str = "user1pass";
 
@@ -328,14 +330,14 @@ fn import_private_key_to_user_keyring(keyring: &std::path::Path, private_key: &P
     run_success(
         gpg_command()
             .arg("--homedir")
-            .arg(keyring)
+            .arg(gpg_arg_path(keyring))
             .arg("--batch")
             .arg("--pinentry-mode")
             .arg("loopback")
             .arg("--passphrase")
             .arg(KEY_PASSPHRASE)
             .arg("--import")
-            .arg(private_key),
+            .arg(gpg_arg_path(private_key)),
     );
 }
 

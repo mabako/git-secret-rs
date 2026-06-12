@@ -3,7 +3,7 @@ use std::process::Command;
 
 mod support;
 
-use support::{gpg_command, run_success, TempRepo};
+use support::{gpg_arg_path, gpg_command, run_success, TempRepo};
 
 #[test]
 fn init_help_prints_usage_without_creating_gitsecret() {
@@ -87,7 +87,7 @@ fn init_creates_repository_files_with_empty_keyring() {
     let keyring = run_success(
         gpg_command()
             .arg("--homedir")
-            .arg(&keys)
+            .arg(gpg_arg_path(&keys))
             .arg("--with-colons")
             .arg("--list-keys"),
     );
