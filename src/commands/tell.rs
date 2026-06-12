@@ -40,6 +40,7 @@ pub(crate) fn run(options: Options) -> AppResult<Vec<String>> {
     let mut imported = Vec::new();
 
     for key in keys {
+        ensure_unambiguous_public_key(options.gpg_homedir.as_ref(), &key)?;
         let exported = source_gpg(options.gpg_homedir.as_ref())
             .arg("--batch")
             .arg("--armor")
@@ -58,6 +59,36 @@ pub(crate) fn run(options: Options) -> AppResult<Vec<String>> {
     }
 
     Ok(imported)
+}
+
+fn ensure_unambiguous_public_key(homedir: Option<&PathBuf>, key: &str) -> AppResult<()> {
+    let output = source_gpg(homedir)
+        .arg("--batch")
+        .arg("--with-colons")
+        .arg("--list-keys")
+        .arg(key)
+        .output()
+        .map_err(|e| format!("run gpg --list-keys {}: {}", key, e))?;
+    if !output.status.success() {
+        return Ok(());
+    }
+
+    let matches = public_key_count(&output.stdout);
+    if matches > 1 {
+        return Err(format!(
+            "multiple public keys match '{}'; specify a fingerprint or key id",
+            key
+        ));
+    }
+
+    Ok(())
+}
+
+fn public_key_count(output: &[u8]) -> usize {
+    String::from_utf8_lossy(output)
+        .lines()
+        .filter(|line| line.starts_with("pub:"))
+        .count()
 }
 
 fn source_gpg(homedir: Option<&PathBuf>) -> Command {
@@ -165,5 +196,15 @@ mod tests {
     #[test]
     fn tell_options_require_homedir_after_d() {
         assert!(command().try_get_matches_from(["tell", "-d"]).is_err());
+    }
+
+    #[test]
+    fn public_key_count_counts_primary_keys() {
+        assert_eq!(
+            public_key_count(
+                b"tru:o:1:0:0:0:0:0\npub:u:2048:1:AAAAAAAAAAAAAAAA:::::::\nuid:u::::::User One::::::::\nsub:u:2048:1:BBBBBBBBBBBBBBBB:::::::\npub:u:2048:1:CCCCCCCCCCCCCCCC:::::::\n",
+            ),
+            2
+        );
     }
 }

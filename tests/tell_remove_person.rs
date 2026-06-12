@@ -6,6 +6,7 @@ use support::{fixture_path, import_public_key, run_success, TempDir, TempRepo};
 
 const USER1_FINGERPRINT: &str = "CE82DD3AFC167295F9132371D2805A4182E99FF4";
 const USER1_UID: &str = "user1 <user1@gitsecret.io>";
+const DUPLICATE_EMAIL: &str = "duplicate@example.com";
 
 #[test]
 fn tell_and_removeperson_accept_fingerprint() {
@@ -107,5 +108,43 @@ fn tell_can_use_git_email() {
         String::from_utf8_lossy(&whoknows.stdout).contains(USER1_UID),
         "tell -m should add the git user.email key:\n{}",
         String::from_utf8_lossy(&whoknows.stdout)
+    );
+}
+
+#[test]
+fn tell_rejects_email_that_matches_multiple_local_keys() {
+    let user_gpg_home = TempDir::new("guser-duplicate");
+    import_public_key(
+        user_gpg_home.path(),
+        &fixture_path("keys/duplicate-public-keys.asc"),
+    );
+
+    let repo = TempRepo::new("gstd");
+    run_success(Command::new("git").arg("init").arg(repo.path()));
+    run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("init")
+            .current_dir(repo.path()),
+    );
+
+    let output = Command::new(env!("CARGO_BIN_EXE_git-secret"))
+        .arg("tell")
+        .arg("-d")
+        .arg(user_gpg_home.path())
+        .arg(DUPLICATE_EMAIL)
+        .current_dir(repo.path())
+        .output()
+        .expect("git-secret tell should run");
+    assert!(
+        !output.status.success(),
+        "tell should fail when an email matches multiple keys\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("multiple public keys match 'duplicate@example.com'"),
+        "tell should report ambiguous matching keys:\n{}",
+        stderr
     );
 }
