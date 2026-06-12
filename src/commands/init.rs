@@ -15,8 +15,9 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
     let secret_dir = secret_dir();
     let keys_dir = keys_dir();
     let paths_dir = paths_dir();
-    fs::create_dir_all(repo.join(&keys_dir))
-        .map_err(|e| format!("create {}: {}", keys_dir.display(), e))?;
+    let keyring = repo.join(&keys_dir);
+    fs::create_dir_all(&keyring).map_err(|e| format!("create {}: {}", keys_dir.display(), e))?;
+    restrict_keyring_permissions(&keyring)?;
     fs::create_dir_all(repo.join(&paths_dir))
         .map_err(|e| format!("create {}: {}", paths_dir.display(), e))?;
 
@@ -92,6 +93,19 @@ fn configure_diff_driver() -> AppResult<()> {
         .arg("diff.git-secret.textconv")
         .arg("git-secret textconv")
         .status_ok("configure git-secret diff textconv")
+}
+
+#[cfg(unix)]
+fn restrict_keyring_permissions(path: &std::path::Path) -> AppResult<()> {
+    use std::os::unix::fs::PermissionsExt;
+
+    fs::set_permissions(path, fs::Permissions::from_mode(0o700))
+        .map_err(|e| format!("set permissions on {}: {}", path.display(), e))
+}
+
+#[cfg(not(unix))]
+fn restrict_keyring_permissions(_path: &std::path::Path) -> AppResult<()> {
+    Ok(())
 }
 
 #[cfg(test)]
