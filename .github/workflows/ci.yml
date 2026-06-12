@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    name: Build and test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        shell: bash
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+
+      - name: Install GnuPG on Linux
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gnupg
+
+      - name: Install GnuPG on macOS
+        if: runner.os == 'macOS'
+        run: |
+          if ! command -v gpg >/dev/null 2>&1; then
+            brew install gnupg
+          fi
+
+      - name: Install GnuPG on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          choco install gnupg -y --no-progress
+          $gpgPath = "${env:ProgramFiles(x86)}\GnuPG\bin"
+          if (Test-Path $gpgPath) {
+            Add-Content -Path $env:GITHUB_PATH -Value $gpgPath
+          }
+
+      - name: Show tool versions
+        run: |
+          rustc --version
+          cargo --version
+          gpg --version
+
+      - name: Build
+        run: cargo build --locked
+
+      - name: Test
+        run: cargo test --locked
