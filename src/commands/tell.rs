@@ -1,8 +1,11 @@
-use std::io::Write;
+use std::fs;
 use std::path::PathBuf;
-use std::process::{Command, Stdio};
+use std::process::Command;
+use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::git::{ensure_initialized, gpg_command, repo_gpg, Repo};
+use crate::git::{
+    ensure_initialized, gpg_arg_path, gpg_command, gpg_needs_msys_paths, repo_gpg, Repo,
+};
 use crate::AppResult;
 
 #[derive(clap::Args)]
@@ -38,6 +41,7 @@ pub(crate) fn run(options: Options) -> AppResult<Vec<String>> {
 
     for key in keys {
         let exported = source_gpg(options.gpg_homedir.as_ref())
+            .arg("--batch")
             .arg("--armor")
             .arg("--export")
             .arg(&key)
@@ -47,27 +51,7 @@ pub(crate) fn run(options: Options) -> AppResult<Vec<String>> {
             return Err(format!("could not export public key '{}'", key));
         }
 
-        let mut child = repo_gpg(&repo)
-            .arg("--import")
-            .stdin(Stdio::piped())
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit())
-            .spawn()
-            .map_err(|e| format!("run gpg --import: {}", e))?;
-
-        child
-            .stdin
-            .as_mut()
-            .ok_or_else(|| "could not open gpg import stdin".to_string())?
-            .write_all(&exported.stdout)
-            .map_err(|e| format!("write key to gpg import: {}", e))?;
-
-        let status = child
-            .wait()
-            .map_err(|e| format!("wait for gpg import: {}", e))?;
-        if !status.success() {
-            return Err(format!("could not import public key '{}'", key));
-        }
+        import_public_key(&repo, &key, &exported.stdout)?;
 
         println!("added recipient {}", key);
         imported.push(key);
@@ -79,9 +63,56 @@ pub(crate) fn run(options: Options) -> AppResult<Vec<String>> {
 fn source_gpg(homedir: Option<&PathBuf>) -> Command {
     let mut command = gpg_command();
     if let Some(homedir) = homedir {
-        command.arg("--homedir").arg(homedir);
+        command.arg("--homedir").arg(gpg_arg_path(homedir));
     }
     command
+}
+
+fn import_public_key(repo: &Repo, key: &str, public_key: &[u8]) -> AppResult<()> {
+    let key_file = temporary_public_key_path();
+    fs::write(&key_file, public_key).map_err(|e| format!("write {}: {}", key_file.display(), e))?;
+
+    let mut command = repo_gpg(repo);
+    command.arg("--batch");
+    if gpg_needs_msys_paths() {
+        command.arg("--no-autostart");
+    }
+    let output = command
+        .arg("--status-fd")
+        .arg("1")
+        .arg("--import")
+        .arg(gpg_arg_path(&key_file))
+        .output()
+        .map_err(|e| format!("run gpg --import: {}", e));
+
+    let _ = fs::remove_file(&key_file);
+    let output = output?;
+    if output.status.success() || gpg_import_succeeded(&output.stdout) {
+        Ok(())
+    } else {
+        Err(format!(
+            "could not import public key '{}': {}",
+            key,
+            String::from_utf8_lossy(&output.stderr).trim()
+        ))
+    }
+}
+
+fn gpg_import_succeeded(stdout: &[u8]) -> bool {
+    String::from_utf8_lossy(stdout)
+        .lines()
+        .any(|line| line.starts_with("[GNUPG:] IMPORT_OK "))
+}
+
+fn temporary_public_key_path() -> PathBuf {
+    let unique = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system clock should be after unix epoch")
+        .as_nanos();
+    std::env::temp_dir().join(format!(
+        "git-secret-tell-{}-{unique:x}.asc",
+        std::process::id()
+    ))
 }
 
 fn git_user_email() -> AppResult<String> {

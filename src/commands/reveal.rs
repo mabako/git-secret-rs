@@ -2,7 +2,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use crate::crypto::sha256_file;
-use crate::git::{ensure_initialized, user_gpg, Repo, UserGpgOptions};
+use crate::git::{ensure_initialized, gpg_arg_path, user_gpg, Repo, UserGpgOptions};
 use crate::mapping::{Mapping, MappingEntry};
 use crate::paths::{encrypted_path, selected_paths};
 use crate::process::CommandExt;
@@ -93,8 +93,8 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
         let result = command
             .arg("--decrypt")
             .arg("--output")
-            .arg(&output)
-            .arg(&input)
+            .arg(gpg_arg_path(&output))
+            .arg(gpg_arg_path(&input))
             .status_ok(&format!("decrypt {}", path));
         if let Err(error) = result {
             if options.continue_on_error {

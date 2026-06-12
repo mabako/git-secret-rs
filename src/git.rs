@@ -61,7 +61,9 @@ pub(crate) fn ensure_initialized(repo: &Repo) -> AppResult<()> {
 
 pub(crate) fn repo_gpg(repo: &Repo) -> Command {
     let mut command = gpg_command();
-    command.arg("--homedir").arg(repo.join(keys_dir()));
+    command
+        .arg("--homedir")
+        .arg(gpg_arg_path(&repo.join(keys_dir())));
     command
 }
 
@@ -124,7 +126,7 @@ fn user_gpg_with_pinentry(options: &UserGpgOptions, pinentry: Option<&OsStr>) ->
     let mut command = gpg_command_with_pinentry(pinentry);
     command.arg("--quiet").arg("--no-tty");
     if let Some(homedir) = &options.homedir {
-        command.arg("--homedir").arg(homedir);
+        command.arg("--homedir").arg(gpg_arg_path(homedir));
     }
     if let Some(passphrase) = &options.passphrase {
         if pinentry.is_none() {
@@ -140,17 +142,52 @@ pub(crate) fn gpg_command() -> Command {
 }
 
 fn gpg_command_with_pinentry(pinentry: Option<&OsStr>) -> Command {
-    let program_files_x86 = env::var_os(PROGRAM_FILES_X86_ENV).map(PathBuf::from);
-    let secrets_gpg_command = env::var_os(SECRETS_GPG_COMMAND_ENV).map(PathBuf::from);
-    let mut command = Command::new(gpg_program_for_env(
-        secrets_gpg_command.as_deref(),
-        env::var("MSYSTEM").ok().as_deref(),
-        program_files_x86.as_deref(),
-    ));
+    let program = gpg_program_from_env();
+    let mut command = Command::new(&program);
+    configure_gpg_environment(&mut command, &program);
     if let Some(pinentry) = pinentry {
         add_pinentry_mode(&mut command, pinentry);
     }
     command
+}
+
+pub(crate) fn gpg_arg_path(path: &Path) -> OsString {
+    if gpg_needs_msys_paths() {
+        return msys_path(path).unwrap_or_else(|| path.as_os_str().to_os_string());
+    }
+
+    path.as_os_str().to_os_string()
+}
+
+pub(crate) fn gpg_needs_msys_paths() -> bool {
+    gpg_program_needs_msys_paths(&gpg_program_from_env())
+}
+
+fn gpg_program_from_env() -> PathBuf {
+    let program_files_x86 = env::var_os(PROGRAM_FILES_X86_ENV).map(PathBuf::from);
+    let secrets_gpg_command = env::var_os(SECRETS_GPG_COMMAND_ENV).map(PathBuf::from);
+    gpg_program_for_env(
+        secrets_gpg_command.as_deref(),
+        env::var("MSYSTEM").ok().as_deref(),
+        program_files_x86.as_deref(),
+    )
+}
+
+fn configure_gpg_environment(command: &mut Command, program: &Path) {
+    if !gpg_program_needs_msys_paths(program) {
+        return;
+    }
+
+    let Some(bin_dir) = program.parent() else {
+        return;
+    };
+    let mut paths = vec![bin_dir.to_path_buf()];
+    if let Some(existing) = env::var_os("PATH") {
+        paths.extend(env::split_paths(&existing));
+    }
+    if let Ok(path) = env::join_paths(paths) {
+        command.env("PATH", path);
+    }
 }
 
 fn secrets_pinentry() -> Option<OsString> {
@@ -177,6 +214,48 @@ fn gpg_program_for_env(
     }
 
     PathBuf::from("gpg")
+}
+
+fn gpg_program_needs_msys_paths(program: &Path) -> bool {
+    let Some(file_name) = program.file_name() else {
+        return false;
+    };
+    if !file_name.eq_ignore_ascii_case("gpg.exe") {
+        return false;
+    }
+
+    let mut components = program
+        .components()
+        .map(|component| component.as_os_str().to_string_lossy().to_string())
+        .collect::<Vec<_>>();
+    if components.len() < 3 {
+        return false;
+    }
+
+    components.reverse();
+    components[1].eq_ignore_ascii_case("bin")
+        && components[2].eq_ignore_ascii_case("usr")
+        && components
+            .iter()
+            .skip(3)
+            .any(|component| component.eq_ignore_ascii_case("Git"))
+}
+
+#[cfg(windows)]
+fn msys_path(path: &Path) -> Option<OsString> {
+    let path = path.to_string_lossy().replace('\\', "/");
+    let bytes = path.as_bytes();
+    if bytes.len() < 3 || !bytes[0].is_ascii_alphabetic() || bytes[1] != b':' || bytes[2] != b'/' {
+        return None;
+    }
+
+    let drive = (bytes[0] as char).to_ascii_lowercase();
+    Some(OsString::from(format!("/{drive}{}", &path[2..])))
+}
+
+#[cfg(not(windows))]
+fn msys_path(_path: &Path) -> Option<OsString> {
+    None
 }
 
 pub(crate) fn recipient_key_ids(repo: &Repo) -> AppResult<Vec<String>> {
@@ -347,6 +426,27 @@ mod tests {
             gpg_program_for_env(Some(Path::new("gpg2")), None, None),
             PathBuf::from("gpg2")
         );
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn git_bash_gpg_program_uses_msys_paths() {
+        assert!(gpg_program_needs_msys_paths(Path::new(
+            r"C:\Program Files\Git\usr\bin\gpg.exe"
+        )));
+        assert!(!gpg_program_needs_msys_paths(Path::new(
+            r"C:\Program Files (x86)\GnuPG\bin\gpg.exe"
+        )));
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn msys_path_converts_windows_drive_paths() {
+        assert_eq!(
+            msys_path(Path::new(r"C:\Users\alice\AppData\Local\Temp")).unwrap(),
+            OsString::from("/c/Users/alice/AppData/Local/Temp")
+        );
+        assert_eq!(msys_path(Path::new("relative/path")), None);
     }
 
     #[test]

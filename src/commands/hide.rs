@@ -2,7 +2,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use crate::crypto::sha256_file;
-use crate::git::{ensure_initialized, recipient_key_ids, repo_gpg, Repo};
+use crate::git::{ensure_initialized, gpg_arg_path, recipient_key_ids, repo_gpg, Repo};
 use crate::mapping::Mapping;
 use crate::paths::{encrypted_path, selected_paths};
 use crate::process::CommandExt;
@@ -84,7 +84,9 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
         for recipient in &recipients {
             cmd.arg("--recipient").arg(recipient);
         }
-        cmd.arg("--output").arg(&output).arg(&input);
+        cmd.arg("--output")
+            .arg(gpg_arg_path(&output))
+            .arg(gpg_arg_path(&input));
         cmd.status_ok(&format!("encrypt {}", path))?;
         if mapping.insert_or_update(path.clone(), digest) {
             mapping_changed = true;

@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::Path;
 
-use crate::git::{ensure_initialized, user_gpg, Repo, UserGpgOptions};
+use crate::git::{ensure_initialized, gpg_arg_path, user_gpg, Repo, UserGpgOptions};
 use crate::mapping::Mapping;
 use crate::paths::encrypted_path;
 use crate::AppResult;
@@ -61,7 +61,7 @@ fn decrypt_secret(gpg: &UserGpgOptions, secret: &Path) -> AppResult<Vec<u8>> {
     let output = user_gpg(gpg)
         .arg("--batch")
         .arg("--decrypt")
-        .arg(secret)
+        .arg(gpg_arg_path(secret))
         .output()
         .map_err(|e| format!("decrypt {}: {}", secret.display(), e))?;
     if output.status.success() {
