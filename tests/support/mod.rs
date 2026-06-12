@@ -57,8 +57,20 @@ fn create_temp_path(prefix: &str) -> PathBuf {
     let path =
         std::env::temp_dir().join(format!("{}-{:x}-{:x}", prefix, std::process::id(), unique));
     fs::create_dir_all(&path).expect("temp directory should be created");
+    set_private_directory_permissions(&path);
     path
 }
+
+#[cfg(unix)]
+fn set_private_directory_permissions(path: &Path) {
+    use std::os::unix::fs::PermissionsExt;
+
+    fs::set_permissions(path, fs::Permissions::from_mode(0o700))
+        .expect("temp directory permissions should be restricted");
+}
+
+#[cfg(not(unix))]
+fn set_private_directory_permissions(_path: &Path) {}
 
 pub(crate) fn run_success(command: &mut Command) -> Output {
     let output = command.output().expect("command should run");
