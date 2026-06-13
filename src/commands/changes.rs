@@ -1,7 +1,8 @@
 use std::fs;
 use std::path::Path;
 
-use crate::git::{ensure_initialized, gpg_arg_path, user_gpg, Repo, UserGpgOptions};
+use crate::git::{ensure_initialized, Repo};
+use crate::gpg::{gpg_arg_path, user_gpg, UserGpgOptions};
 use crate::mapping::Mapping;
 use crate::paths::encrypted_path;
 use crate::AppResult;

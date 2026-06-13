@@ -2,7 +2,8 @@ use std::fs;
 use std::path::PathBuf;
 
 use crate::crypto::sha256_file;
-use crate::git::{ensure_initialized, gpg_arg_path, recipient_key_ids, repo_gpg, Repo};
+use crate::git::{ensure_initialized, recipient_key_ids, repo_gpg, Repo};
+use crate::gpg::gpg_arg_path;
 use crate::mapping::Mapping;
 use crate::paths::{encrypted_path, selected_paths};
 use crate::process::CommandExt;

@@ -3,6 +3,7 @@ use std::env;
 mod commands;
 mod crypto;
 mod git;
+mod gpg;
 mod mapping;
 mod paths;
 mod process;

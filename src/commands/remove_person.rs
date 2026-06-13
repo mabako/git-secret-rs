@@ -3,9 +3,8 @@ use std::fs;
 use std::io::Write;
 use std::process::Stdio;
 
-use crate::git::{
-    ensure_initialized, ensure_valid_key_selector, gpg_needs_msys_paths, keys_dir, repo_gpg, Repo,
-};
+use crate::git::{ensure_initialized, ensure_valid_key_selector, keys_dir, repo_gpg, Repo};
+use crate::gpg::gpg_needs_msys_paths;
 use crate::AppResult;
 
 #[derive(clap::Args)]

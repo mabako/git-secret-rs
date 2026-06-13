@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
-use crate::git::{ensure_initialized, gpg_arg_path, user_gpg, Repo, UserGpgOptions};
+use crate::git::{ensure_initialized, Repo};
+use crate::gpg::{gpg_arg_path, user_gpg, UserGpgOptions};
 use crate::paths::{encrypted_path, normalize_secret_path_for_repo};
 use crate::process::CommandExt;
 use crate::AppResult;

@@ -3,10 +3,8 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::git::{
-    ensure_initialized, ensure_valid_key_selector, gpg_arg_path, gpg_command, gpg_needs_msys_paths,
-    repo_gpg, Repo,
-};
+use crate::git::{ensure_initialized, ensure_valid_key_selector, repo_gpg, Repo};
+use crate::gpg::{gpg_arg_path, gpg_command, gpg_needs_msys_paths};
 use crate::AppResult;
 
 #[derive(clap::Args)]

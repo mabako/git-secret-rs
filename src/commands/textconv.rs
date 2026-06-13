@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::git::{gpg_arg_path, user_gpg, UserGpgOptions};
+use crate::gpg::{gpg_arg_path, user_gpg, UserGpgOptions};
 use crate::process::CommandExt;
 use crate::AppResult;
 
