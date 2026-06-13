@@ -6,25 +6,27 @@ use crate::process::CommandExt;
 use crate::AppResult;
 
 #[derive(clap::Args)]
-pub(crate) struct Options {}
+pub(crate) struct Options {
+    #[arg(
+        long,
+        help = "Updates repository integration files without changing existing secrets metadata"
+    )]
+    upgrade: bool,
+}
 
 pub(crate) fn run(options: Options) -> AppResult<()> {
-    let _ = options;
-
     let repo = Repo::discover()?;
     let secret_dir = secret_dir();
     let keys_dir = keys_dir();
     let paths_dir = paths_dir();
     let keyring = repo.join(&keys_dir);
-    fs::create_dir_all(&keyring).map_err(|e| format!("create {}: {}", keys_dir.display(), e))?;
-    restrict_keyring_permissions(&keyring)?;
-    fs::create_dir_all(repo.join(&paths_dir))
-        .map_err(|e| format!("create {}: {}", paths_dir.display(), e))?;
+    if !options.upgrade && repo.join(&secret_dir).exists() && !repo.join(mapping_file()).is_file() {
+        return Err("abort: already initialized.".to_string());
+    }
 
     let mapping = repo.join(mapping_file());
-    if !mapping.exists() {
-        fs::write(&mapping, "").map_err(|e| format!("write {}: {}", mapping.display(), e))?;
-    }
+    let preserve_keyring = options.upgrade && keyring.exists();
+    let preserve_mapping = options.upgrade && mapping.exists();
 
     let extension = secret_extension();
     let gitignore_entries = root_gitignore_entries(&secret_dir, &extension);
@@ -33,9 +35,22 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
     add_lines_to_root_file(&repo, ".gitattributes", &gitattributes_entries)?;
     configure_diff_driver()?;
 
-    repo_gpg(&repo)
-        .arg("--list-keys")
-        .status_ok("initialize repository keyring")?;
+    if !preserve_keyring {
+        fs::create_dir_all(&keyring)
+            .map_err(|e| format!("create {}: {}", keys_dir.display(), e))?;
+        restrict_keyring_permissions(&keyring)?;
+        repo_gpg(&repo)
+            .arg("--list-keys")
+            .status_ok("initialize repository keyring")?;
+    }
+
+    if !preserve_mapping {
+        fs::create_dir_all(repo.join(&paths_dir))
+            .map_err(|e| format!("create {}: {}", paths_dir.display(), e))?;
+        if !mapping.exists() {
+            fs::write(&mapping, "").map_err(|e| format!("write {}: {}", mapping.display(), e))?;
+        }
+    }
 
     println!("created {}", repo.join(&secret_dir).display());
     Ok(())
@@ -111,7 +126,7 @@ fn restrict_keyring_permissions(_path: &std::path::Path) -> AppResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use clap::Args;
+    use clap::{Args, FromArgMatches};
 
     fn command() -> clap::Command {
         Options::augment_args(clap::Command::new("init"))
@@ -125,5 +140,15 @@ mod tests {
     #[test]
     fn init_options_reject_unknown_flags() {
         assert!(command().try_get_matches_from(["init", "-v"]).is_err());
+    }
+
+    #[test]
+    fn init_options_parse_upgrade() {
+        let matches = command()
+            .try_get_matches_from(["init", "--upgrade"])
+            .unwrap();
+        let options = Options::from_arg_matches(&matches).unwrap();
+
+        assert!(options.upgrade);
     }
 }

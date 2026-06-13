@@ -85,6 +85,31 @@ pub(crate) fn run_success(command: &mut Command) -> Output {
     output
 }
 
+pub(crate) fn git_secret(current_dir: &Path) -> Command {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_git-secret"));
+    command.current_dir(current_dir);
+    command
+}
+
+pub(crate) fn assert_success(output: &Output) {
+    assert!(
+        output.status.success(),
+        "command failed with {}\nstdout:\n{}\nstderr:\n{}",
+        output.status,
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+pub(crate) fn assert_failure(output: &Output) {
+    assert!(
+        !output.status.success(),
+        "command unexpectedly succeeded\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
 pub(crate) fn gpg_command() -> Command {
     Command::new(gpg_program())
 }
