@@ -206,6 +206,45 @@ pub(crate) fn import_public_key(homedir: &Path, key: &Path) {
     );
 }
 
+pub(crate) fn import_public_fixture_key(homedir: &Path, email: &str) {
+    import_public_key(homedir, &fixture_key_path(email, "public.key"));
+}
+
+pub(crate) fn import_private_fixture_key(homedir: &Path, email: &str) {
+    import_private_key(
+        homedir,
+        &fixture_key_path(email, "private.key"),
+        &fixture_key_passphrase(email),
+    );
+}
+
+pub(crate) fn import_private_key(homedir: &Path, key: &Path, passphrase: &str) {
+    run_success(
+        gpg_command()
+            .arg("--homedir")
+            .arg(gpg_arg_path(homedir))
+            .arg("--batch")
+            .arg("--pinentry-mode")
+            .arg("loopback")
+            .arg("--passphrase")
+            .arg(passphrase)
+            .arg("--import")
+            .arg(gpg_arg_path(key)),
+    );
+}
+
+pub(crate) fn fixture_key_path(email: &str, file: &str) -> PathBuf {
+    fixture_path(&format!("keys/{email}/{file}"))
+}
+
+pub(crate) fn fixture_key_passphrase(email: &str) -> String {
+    let local_part = email
+        .split_once('@')
+        .map(|(local_part, _)| local_part)
+        .unwrap_or(email);
+    format!("{local_part}pass")
+}
+
 fn gpg_import_succeeded(stdout: &[u8]) -> bool {
     String::from_utf8_lossy(stdout)
         .lines()

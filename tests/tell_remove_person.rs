@@ -2,7 +2,7 @@ use std::process::Command;
 
 mod support;
 
-use support::{fixture_path, import_public_key, run_success, TempDir, TempRepo};
+use support::{import_public_fixture_key, run_success, TempDir, TempRepo};
 
 const USER1_FINGERPRINT: &str = "CE82DD3AFC167295F9132371D2805A4182E99FF4";
 const USER1_UID: &str = "user1 <user1@gitsecret.io>";
@@ -11,10 +11,7 @@ const DUPLICATE_EMAIL: &str = "duplicate@example.com";
 #[test]
 fn tell_and_removeperson_accept_fingerprint() {
     let user_gpg_home = TempDir::new("guser");
-    import_public_key(
-        user_gpg_home.path(),
-        &fixture_path("keys/user1@gitsecret.io/public.key"),
-    );
+    import_public_fixture_key(user_gpg_home.path(), "user1@gitsecret.io");
 
     let repo = TempRepo::new("gstr");
     run_success(Command::new("git").arg("init").arg(repo.path()));
@@ -76,10 +73,7 @@ fn tell_and_removeperson_accept_fingerprint() {
 #[test]
 fn tell_can_use_git_email() {
     let user_gpg_home = TempDir::new("guser");
-    import_public_key(
-        user_gpg_home.path(),
-        &fixture_path("keys/user1@gitsecret.io/public.key"),
-    );
+    import_public_fixture_key(user_gpg_home.path(), "user1@gitsecret.io");
 
     let repo = TempRepo::new("gstm");
     run_success(Command::new("git").arg("init").arg(repo.path()));
@@ -120,10 +114,7 @@ fn tell_can_use_git_email() {
 #[test]
 fn tell_rejects_email_that_matches_multiple_local_keys() {
     let user_gpg_home = TempDir::new("guser-duplicate");
-    import_public_key(
-        user_gpg_home.path(),
-        &fixture_path("keys/duplicate@example.com/public.asc"),
-    );
+    import_public_fixture_key(user_gpg_home.path(), "duplicate@example.com");
 
     let repo = TempRepo::new("gstd");
     run_success(Command::new("git").arg("init").arg(repo.path()));

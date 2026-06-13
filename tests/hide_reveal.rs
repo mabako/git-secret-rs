@@ -5,31 +5,16 @@ use std::process::Command;
 mod support;
 
 use support::{
-    fixture_path, gpg_arg_path, gpg_command, import_public_key, run_success, TempDir, TempRepo,
+    import_private_fixture_key, import_private_key, import_public_fixture_key, import_public_key,
+    run_success, TempDir, TempRepo,
 };
 
 const KEY_PASSPHRASE: &str = "user1pass";
 
 #[test]
 fn hide_and_reveal_round_trip_with_supplied_keys() {
-    let public_key = key_path(
-        "GIT_SECRET_TEST_PUBLIC_KEY",
-        fixture_path("keys/user1@gitsecret.io/public.key"),
-    );
-    let private_key = key_path(
-        "GIT_SECRET_TEST_PRIVATE_KEY",
-        fixture_path("keys/user1@gitsecret.io/private.key"),
-    );
-    assert!(
-        public_key.is_file(),
-        "public key fixture does not exist: {}",
-        public_key.display()
-    );
-    assert!(
-        private_key.is_file(),
-        "private key fixture does not exist: {}",
-        private_key.display()
-    );
+    let public_key = override_key_path("GIT_SECRET_TEST_PUBLIC_KEY");
+    let private_key = override_key_path("GIT_SECRET_TEST_PRIVATE_KEY");
 
     let repo = TempRepo::new("gshr");
     run_success(Command::new("git").arg("init").arg(repo.path()));
@@ -40,9 +25,17 @@ fn hide_and_reveal_round_trip_with_supplied_keys() {
     );
 
     let keyring = repo.path().join(".gitsecret").join("keys");
-    import_public_key_to_repo_keyring(&keyring, &public_key);
+    if let Some(public_key) = public_key {
+        import_public_key_to_repo_keyring(&keyring, &public_key);
+    } else {
+        import_public_fixture_key(&keyring, "user1@gitsecret.io");
+    }
     let user_gpg_home = TempDir::new("guser");
-    import_private_key_to_user_keyring(user_gpg_home.path(), &private_key);
+    if let Some(private_key) = private_key {
+        import_private_key_to_user_keyring(user_gpg_home.path(), &private_key);
+    } else {
+        import_private_fixture_key(user_gpg_home.path(), "user1@gitsecret.io");
+    }
 
     let secret_path = repo.path().join("secret.txt");
     fs::write(&secret_path, "the launch code is swordfish")
@@ -275,24 +268,17 @@ fn import_public_key_to_repo_keyring(keyring: &PathBuf, public_key: &PathBuf) {
 }
 
 fn import_private_key_to_user_keyring(keyring: &std::path::Path, private_key: &PathBuf) {
-    run_success(
-        gpg_command()
-            .arg("--homedir")
-            .arg(gpg_arg_path(keyring))
-            .arg("--batch")
-            .arg("--pinentry-mode")
-            .arg("loopback")
-            .arg("--passphrase")
-            .arg(KEY_PASSPHRASE)
-            .arg("--import")
-            .arg(gpg_arg_path(private_key)),
-    );
+    import_private_key(keyring, private_key, KEY_PASSPHRASE);
 }
 
-fn key_path(env_name: &str, default: PathBuf) -> PathBuf {
-    if let Some(path) = std::env::var_os(env_name) {
-        return PathBuf::from(path);
-    }
+fn override_key_path(env_name: &str) -> Option<PathBuf> {
+    let path = std::env::var_os(env_name).map(PathBuf::from)?;
+    assert!(
+        path.is_file(),
+        "{} fixture does not exist: {}",
+        env_name,
+        path.display()
+    );
 
-    default
+    Some(path)
 }

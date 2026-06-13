@@ -7,9 +7,9 @@ use std::process::Command;
 
 mod support;
 
-use support::{fixture_path, run_success, TempDir, TempRepo};
+use support::{fixture_key_passphrase, fixture_key_path, run_success, TempDir, TempRepo};
 
-const KEY_PASSPHRASE: &str = "user1pass";
+const USER1_EMAIL: &str = "user1@gitsecret.io";
 const USER1_FINGERPRINT: &str = "CE82DD3AFC167295F9132371D2805A4182E99FF4";
 const USER1_UID: &str = "user1 <user1@gitsecret.io>";
 
@@ -29,15 +29,17 @@ fn all_commands_work_with_git_bash_gpg() {
     run_git_secret(&gpg, ["init"], repo.path());
 
     let user_gpg_home = TempDir::new("gsgitbash-user");
-    import_key(
+    let user_passphrase = fixture_key_passphrase(USER1_EMAIL);
+    import_public_key(
         &gpg,
         user_gpg_home.path(),
-        fixture_path("keys/user1@gitsecret.io/public.key"),
+        fixture_key_path(USER1_EMAIL, "public.key"),
     );
     import_private_key(
         &gpg,
         user_gpg_home.path(),
-        fixture_path("keys/user1@gitsecret.io/private.key"),
+        fixture_key_path(USER1_EMAIL, "private.key"),
+        &user_passphrase,
     );
 
     run_git_secret(
@@ -84,7 +86,7 @@ fn all_commands_work_with_git_bash_gpg() {
             OsStr::new("-d"),
             user_gpg_home.path().as_os_str(),
             OsStr::new("-p"),
-            OsStr::new(KEY_PASSPHRASE),
+            OsStr::new(&user_passphrase),
         ],
         repo.path(),
     );
@@ -100,7 +102,7 @@ fn all_commands_work_with_git_bash_gpg() {
             OsStr::new("-d"),
             user_gpg_home.path().as_os_str(),
             OsStr::new("-p"),
-            OsStr::new(KEY_PASSPHRASE),
+            OsStr::new(&user_passphrase),
             OsStr::new("secret.txt"),
         ],
         repo.path(),
@@ -117,7 +119,7 @@ fn all_commands_work_with_git_bash_gpg() {
             OsStr::new("-d"),
             user_gpg_home.path().as_os_str(),
             OsStr::new("-p"),
-            OsStr::new(KEY_PASSPHRASE),
+            OsStr::new(&user_passphrase),
             encrypted.as_os_str(),
         ],
         repo.path(),
@@ -135,7 +137,7 @@ fn all_commands_work_with_git_bash_gpg() {
             OsStr::new("-d"),
             user_gpg_home.path().as_os_str(),
             OsStr::new("-p"),
-            OsStr::new(KEY_PASSPHRASE),
+            OsStr::new(&user_passphrase),
         ],
         repo.path(),
     );
@@ -177,7 +179,7 @@ where
     run_success(&mut command)
 }
 
-fn import_key(gpg: &Path, homedir: &Path, key: PathBuf) {
+fn import_public_key(gpg: &Path, homedir: &Path, key: PathBuf) {
     run_success(
         Command::new(gpg)
             .arg("--homedir")
@@ -188,7 +190,7 @@ fn import_key(gpg: &Path, homedir: &Path, key: PathBuf) {
     );
 }
 
-fn import_private_key(gpg: &Path, homedir: &Path, key: PathBuf) {
+fn import_private_key(gpg: &Path, homedir: &Path, key: PathBuf, passphrase: &str) {
     run_success(
         Command::new(gpg)
             .arg("--homedir")
@@ -197,7 +199,7 @@ fn import_private_key(gpg: &Path, homedir: &Path, key: PathBuf) {
             .arg("--pinentry-mode")
             .arg("loopback")
             .arg("--passphrase")
-            .arg(KEY_PASSPHRASE)
+            .arg(passphrase)
             .arg("--import")
             .arg(git_bash_arg_path(&key)),
     );
