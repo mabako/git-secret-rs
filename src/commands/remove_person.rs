@@ -1,10 +1,10 @@
-use std::collections::HashSet;
 use std::fs;
-use std::io::Write;
+use std::path::{Path, PathBuf};
 use std::process::Stdio;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::git::{ensure_initialized, ensure_valid_key_selector, keys_dir, repo_gpg, Repo};
-use crate::gpg::gpg_needs_msys_paths;
+use crate::gpg::{gpg_arg_path, gpg_command, gpg_needs_msys_paths};
 use crate::AppResult;
 
 #[derive(clap::Args)]
@@ -30,173 +30,235 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
 }
 
 fn remove_keys(repo: &Repo, keys: &[String]) -> AppResult<()> {
-    let mut removed_fingerprints = Vec::new();
     for key in keys {
         ensure_valid_key_selector(key)?;
-        let fingerprints = matching_fingerprints(repo, key)?;
-        if fingerprints.is_empty() {
-            if !key_is_absent(repo, key)? {
-                delete_key(repo, key)?;
-            }
-            continue;
-        }
-        removed_fingerprints.extend(fingerprints);
     }
 
-    removed_fingerprints.sort();
-    removed_fingerprints.dedup();
-    if !removed_fingerprints.is_empty() {
-        rewrite_keyring_without(repo, &removed_fingerprints)?;
+    for key in keys {
+        let secret_fingerprints = matching_secret_fingerprints(repo, key)?;
+        if !secret_fingerprints.is_empty()
+            || (repository_has_secret_key_files(repo) && !key_is_absent(repo, key)?)
+        {
+            return Err(secret_key_removal_error(repo, key, &secret_fingerprints));
+        }
+    }
+
+    let mut present_keys = Vec::new();
+    for key in keys {
+        if !key_is_absent(repo, key)? {
+            present_keys.push(key.clone());
+        }
+    }
+    if !present_keys.is_empty() {
+        delete_keys(repo, &present_keys)?;
     }
 
     Ok(())
 }
 
-fn delete_key(repo: &Repo, key: &str) -> AppResult<()> {
-    let secret_and_public = run_delete_command(repo, "--delete-secret-and-public-keys", key)?;
-    if secret_and_public.status.success() || key_is_absent(repo, key)? {
+fn secret_key_removal_error(repo: &Repo, key: &str, secret_fingerprints: &[String]) -> String {
+    let key = secret_fingerprints
+        .first()
+        .map(String::as_str)
+        .unwrap_or(key);
+    format!(
+        "recipient '{}' has a secret key in the repository keyring; delete it manually with: {}",
+        key,
+        manual_delete_secret_key_command(repo, key)
+    )
+}
+
+fn manual_delete_secret_key_command(repo: &Repo, key: &str) -> String {
+    format!(
+        "gpg --homedir {} --delete-secret-keys {}",
+        shell_quote(&repo.join(keys_dir()).to_string_lossy()),
+        shell_quote(key)
+    )
+}
+
+fn shell_quote(value: &str) -> String {
+    if !value.is_empty()
+        && value
+            .chars()
+            .all(|character| character.is_ascii_alphanumeric() || "-_./:=@\\".contains(character))
+    {
+        return value.to_string();
+    }
+
+    format!("'{}'", value.replace('\'', "'\\''"))
+}
+
+fn delete_keys(repo: &Repo, keys: &[String]) -> AppResult<()> {
+    let public = run_delete_command(repo, keys)?;
+    if public.status.success() || keys_are_absent(repo, keys)? {
         return Ok(());
     }
 
-    let public = run_delete_command(repo, "--delete-keys", key)?;
-    if public.status.success() || key_is_absent(repo, key)? {
+    if delete_keys_using_short_homedir(repo, keys)? {
         return Ok(());
     }
 
+    let keys = keys.join(", ");
     Err(format!(
         "remove recipient {}: command exited with {}: {}",
-        key,
+        keys,
         public.status,
         String::from_utf8_lossy(&public.stderr).trim()
     ))
 }
 
-fn run_delete_command(repo: &Repo, action: &str, key: &str) -> AppResult<std::process::Output> {
+fn run_delete_command(repo: &Repo, keys: &[String]) -> AppResult<std::process::Output> {
     let mut command = repo_gpg(repo);
-    command
-        .arg("--batch")
-        .arg("--yes")
-        .arg("--pinentry-mode")
-        .arg("loopback");
+    command.arg("--batch").arg("--yes");
     if gpg_needs_msys_paths() {
         command.arg("--no-autostart");
     }
     command
-        .arg(action)
-        .arg(key)
+        .arg("--delete-keys")
+        .args(keys)
         .stdout(Stdio::null())
-        .output()
-        .map_err(|e| format!("remove recipient {}: failed to run command: {}", key, e))
-}
-
-fn rewrite_keyring_without(repo: &Repo, removed_fingerprints: &[String]) -> AppResult<()> {
-    let removed = removed_fingerprints
-        .iter()
-        .map(String::as_str)
-        .collect::<HashSet<_>>();
-    let mut retained_keys = Vec::new();
-    for fingerprint in all_fingerprints(repo)? {
-        if removed.contains(fingerprint.as_str()) {
-            continue;
-        }
-        retained_keys.push(export_public_key(repo, &fingerprint)?);
-    }
-
-    let keyring = repo.join(keys_dir());
-    if keyring.exists() {
-        fs::remove_dir_all(&keyring).map_err(|e| format!("remove {}: {}", keyring.display(), e))?;
-    }
-    fs::create_dir_all(&keyring).map_err(|e| format!("create {}: {}", keyring.display(), e))?;
-
-    for public_key in retained_keys {
-        import_public_key(repo, &public_key)?;
-    }
-
-    Ok(())
-}
-
-fn all_fingerprints(repo: &Repo) -> AppResult<Vec<String>> {
-    let mut command = repo_gpg(repo);
-    command.arg("--batch");
-    if gpg_needs_msys_paths() {
-        command.arg("--no-autostart");
-    }
-    let output = command
-        .arg("--with-colons")
-        .arg("--list-keys")
-        .output()
-        .map_err(|e| format!("list recipients: failed to run command: {}", e))?;
-    if !output.status.success() {
-        return Ok(Vec::new());
-    }
-
-    Ok(public_fingerprints(&output.stdout))
-}
-
-fn export_public_key(repo: &Repo, fingerprint: &str) -> AppResult<Vec<u8>> {
-    let mut command = repo_gpg(repo);
-    command.arg("--batch").arg("--armor");
-    if gpg_needs_msys_paths() {
-        command.arg("--no-autostart");
-    }
-    let output = command
-        .arg("--export")
-        .arg(fingerprint)
         .output()
         .map_err(|e| {
             format!(
-                "export recipient {}: failed to run command: {}",
-                fingerprint, e
+                "remove recipient {}: failed to run command: {}",
+                keys.join(", "),
+                e
             )
-        })?;
-    if output.status.success() && !output.stdout.is_empty() {
-        return Ok(output.stdout);
-    }
-
-    Err(format!("export recipient {} failed", fingerprint))
+        })
 }
 
-fn import_public_key(repo: &Repo, public_key: &[u8]) -> AppResult<()> {
-    let mut command = repo_gpg(repo);
+fn delete_keys_using_short_homedir(repo: &Repo, keys: &[String]) -> AppResult<bool> {
+    let source = repo.join(keys_dir());
+    let temp = temporary_keyring_path();
+    copy_dir(&source, &temp)?;
+    let output = run_delete_command_in_homedir(&temp, keys)?;
+    let deleted = output.status.success() || keys_are_absent_in_homedir(&temp, keys)?;
+    if deleted {
+        replace_dir(&source, &temp)?;
+        return Ok(true);
+    }
+
+    let _ = fs::remove_dir_all(&temp);
+    Ok(false)
+}
+
+fn run_delete_command_in_homedir(
+    homedir: &Path,
+    keys: &[String],
+) -> AppResult<std::process::Output> {
+    let mut command = gpg_command();
     command
+        .arg("--homedir")
+        .arg(gpg_arg_path(homedir))
         .arg("--batch")
-        .arg("--status-fd")
-        .arg("1")
-        .arg("--import")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped());
-    if gpg_needs_msys_paths() {
-        command.arg("--no-autostart");
-    }
-    let mut child = command
-        .spawn()
-        .map_err(|e| format!("import retained recipient: failed to run command: {}", e))?;
-    child
-        .stdin
-        .as_mut()
-        .expect("import stdin should be piped")
-        .write_all(public_key)
-        .map_err(|e| format!("import retained recipient: write stdin: {}", e))?;
-    let output = child
-        .wait_with_output()
-        .map_err(|e| format!("import retained recipient: wait: {}", e))?;
-    if output.status.success() || gpg_import_succeeded(&output.stdout) {
-        return Ok(());
-    }
-
-    Err(format!(
-        "import retained recipient failed: {}",
-        String::from_utf8_lossy(&output.stderr).trim()
-    ))
+        .arg("--yes")
+        .arg("--delete-keys")
+        .args(keys)
+        .stdout(Stdio::null())
+        .output()
+        .map_err(|e| {
+            format!(
+                "remove recipient {}: failed to run command: {}",
+                keys.join(", "),
+                e
+            )
+        })
 }
 
-fn gpg_import_succeeded(stdout: &[u8]) -> bool {
-    String::from_utf8_lossy(stdout)
-        .lines()
-        .any(|line| line.starts_with("[GNUPG:] IMPORT_OK "))
+fn keys_are_absent(repo: &Repo, keys: &[String]) -> AppResult<bool> {
+    for key in keys {
+        if !key_is_absent(repo, key)? {
+            return Ok(false);
+        }
+    }
+    Ok(true)
 }
 
-fn matching_fingerprints(repo: &Repo, key: &str) -> AppResult<Vec<String>> {
+fn keys_are_absent_in_homedir(homedir: &Path, keys: &[String]) -> AppResult<bool> {
+    for key in keys {
+        if !key_is_absent_in_homedir(homedir, key)? {
+            return Ok(false);
+        }
+    }
+    Ok(true)
+}
+
+fn key_is_absent_in_homedir(homedir: &Path, key: &str) -> AppResult<bool> {
+    let status = gpg_command()
+        .arg("--homedir")
+        .arg(gpg_arg_path(homedir))
+        .arg("--batch")
+        .arg("--list-keys")
+        .arg(key)
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .map_err(|e| format!("list recipient {}: failed to run command: {}", key, e))?;
+    Ok(!status.success())
+}
+
+fn temporary_keyring_path() -> PathBuf {
+    let unique = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system clock should be after unix epoch")
+        .as_nanos();
+    std::env::temp_dir().join(format!("gshr-rm-{}-{unique:x}", std::process::id()))
+}
+
+fn copy_dir(source: &Path, destination: &Path) -> AppResult<()> {
+    fs::create_dir_all(destination)
+        .map_err(|e| format!("create {}: {}", destination.display(), e))?;
+    for entry in fs::read_dir(source).map_err(|e| format!("read {}: {}", source.display(), e))? {
+        let entry = entry.map_err(|e| format!("read {}: {}", source.display(), e))?;
+        let source_path = entry.path();
+        let destination_path = destination.join(entry.file_name());
+        if source_path.is_dir() {
+            copy_dir(&source_path, &destination_path)?;
+        } else if !is_lock_file(&source_path) {
+            fs::copy(&source_path, &destination_path).map_err(|e| {
+                format!(
+                    "copy {} to {}: {}",
+                    source_path.display(),
+                    destination_path.display(),
+                    e
+                )
+            })?;
+        }
+    }
+    Ok(())
+}
+
+fn replace_dir(target: &Path, replacement: &Path) -> AppResult<()> {
+    if target.exists() {
+        fs::remove_dir_all(target).map_err(|e| format!("remove {}: {}", target.display(), e))?;
+    }
+    fs::rename(replacement, target).map_err(|e| {
+        format!(
+            "replace {} with {}: {}",
+            target.display(),
+            replacement.display(),
+            e
+        )
+    })
+}
+
+fn is_lock_file(path: &Path) -> bool {
+    path.file_name()
+        .and_then(|file_name| file_name.to_str())
+        .is_some_and(|file_name| file_name.ends_with(".lock"))
+}
+
+fn repository_has_secret_key_files(repo: &Repo) -> bool {
+    let private_keys = repo.join(keys_dir()).join("private-keys-v1.d");
+    fs::read_dir(private_keys)
+        .ok()
+        .into_iter()
+        .flatten()
+        .filter_map(Result::ok)
+        .any(|entry| entry.path().is_file())
+}
+
+fn matching_secret_fingerprints(repo: &Repo, key: &str) -> AppResult<Vec<String>> {
     let mut command = repo_gpg(repo);
     command.arg("--batch");
     if gpg_needs_msys_paths() {
@@ -204,24 +266,29 @@ fn matching_fingerprints(repo: &Repo, key: &str) -> AppResult<Vec<String>> {
     }
     let output = command
         .arg("--with-colons")
-        .arg("--list-keys")
+        .arg("--list-secret-keys")
         .arg(key)
         .output()
-        .map_err(|e| format!("list recipient {}: failed to run command: {}", key, e))?;
+        .map_err(|e| {
+            format!(
+                "list secret recipient {}: failed to run command: {}",
+                key, e
+            )
+        })?;
     if !output.status.success() {
         return Ok(Vec::new());
     }
 
-    Ok(public_fingerprints(&output.stdout))
+    Ok(secret_fingerprints(&output.stdout))
 }
 
-fn public_fingerprints(output: &[u8]) -> Vec<String> {
+fn secret_fingerprints(output: &[u8]) -> Vec<String> {
     let mut fingerprints = Vec::new();
     let mut next_fingerprint_is_primary = false;
     for line in String::from_utf8_lossy(output).lines() {
         let fields = line.split(':').collect::<Vec<_>>();
         match fields.first().copied() {
-            Some("pub") => next_fingerprint_is_primary = true,
+            Some("sec") => next_fingerprint_is_primary = true,
             Some("fpr") if next_fingerprint_is_primary => {
                 if let Some(fingerprint) = fields
                     .get(9)
@@ -232,7 +299,7 @@ fn public_fingerprints(output: &[u8]) -> Vec<String> {
                 }
                 next_fingerprint_is_primary = false;
             }
-            Some("sub") => next_fingerprint_is_primary = false,
+            Some("ssb") => next_fingerprint_is_primary = false,
             _ => {}
         }
     }
@@ -281,10 +348,10 @@ mod tests {
     }
 
     #[test]
-    fn public_fingerprints_parses_fpr_records() {
+    fn secret_fingerprints_parses_secret_primary_fpr_records() {
         assert_eq!(
-            public_fingerprints(
-                b"pub:u:2048:1:D2805A4182E99FF4:::::::\nfpr:::::::::CE82DD3AFC167295F9132371D2805A4182E99FF4:\nuid:u::::::user1 <user1@gitsecret.io>::::::::::\n",
+            secret_fingerprints(
+                b"sec:u:2048:1:D2805A4182E99FF4:::::::\nfpr:::::::::CE82DD3AFC167295F9132371D2805A4182E99FF4:\nuid:u::::::user1 <user1@gitsecret.io>::::::::::\nssb:u:2048:1:AAAAAAAAAAAAAAAA:::::::\nfpr:::::::::BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB:\n",
             ),
             vec!["CE82DD3AFC167295F9132371D2805A4182E99FF4".to_string()]
         );

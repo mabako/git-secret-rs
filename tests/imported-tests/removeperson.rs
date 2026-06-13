@@ -1,3 +1,4 @@
+use std::fs;
 use std::path::Path;
 use std::process::{Command, Output};
 
@@ -127,6 +128,29 @@ fn removeperson_multiple_emails_preserves_unremoved_recipients() {
     assert_whoknows_contains(context.repo.path(), USER2_UID);
 }
 
+#[test]
+fn removeperson_fails_entirely_when_any_removed_key_has_secret_key() {
+    let context = removeperson_context(&[USER1_EMAIL, USER2_EMAIL]);
+    let private_keys = context
+        .repo
+        .path()
+        .join(".gitsecret")
+        .join("keys")
+        .join("private-keys-v1.d");
+    fs::create_dir_all(&private_keys).expect("private key directory should be created");
+    fs::write(private_keys.join("user1.key"), "private key")
+        .expect("private key marker should be written");
+
+    let output = git_secret_removeperson(context.repo.path(), &[USER1_EMAIL, USER2_EMAIL]);
+
+    assert_failure(&output);
+    assert_stderr_contains(&output, "gpg --homedir");
+    assert_stderr_contains(&output, "--delete-secret-keys");
+    assert_stderr_contains(&output, USER1_EMAIL);
+    assert_whoknows_contains(context.repo.path(), USER1_UID);
+    assert_whoknows_contains(context.repo.path(), USER2_UID);
+}
+
 fn removeperson_context(emails: &[&str]) -> RemovePersonContext {
     let gpg_home = TempDir::new("imported-removeperson-gpg");
     for email in emails {
@@ -198,5 +222,13 @@ fn assert_stdout_contains(output: &Output, expected: &str) {
     assert!(
         stdout.contains(expected),
         "stdout should contain {expected:?}:\n{stdout}"
+    );
+}
+
+fn assert_stderr_contains(output: &Output, expected: &str) {
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains(expected),
+        "stderr should contain {expected:?}:\n{stderr}"
     );
 }
