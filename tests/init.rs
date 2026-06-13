@@ -241,3 +241,62 @@ fn init_uses_custom_secrets_extension_for_git_files() {
     assert!(gitattributes.contains("*.enc diff=git-secret\n"));
     assert!(!gitattributes.contains("*.secret diff=git-secret\n"));
 }
+
+#[test]
+fn init_upgrade_preserves_existing_keyring_and_mapping_while_refreshing_git_files() {
+    let repo = TempRepo::new("git-secret-init-upgrade");
+    run_success(Command::new("git").arg("init").arg(repo.path()));
+
+    let gitsecret = repo.path().join(".gitsecret");
+    let keys = gitsecret.join("keys");
+    let paths = gitsecret.join("paths");
+    let mapping = paths.join("mapping.cfg");
+    let keybox = keys.join("pubring.kbx");
+    fs::create_dir_all(&keys).expect("keys directory should be created");
+    fs::create_dir_all(&paths).expect("paths directory should be created");
+    fs::write(&keybox, "existing keyring").expect("existing keyring should be written");
+    fs::write(&mapping, "existing mapping\n").expect("existing mapping should be written");
+    fs::write(repo.path().join(".gitignore"), "target\n").expect(".gitignore should be written");
+    fs::write(repo.path().join(".gitattributes"), "*.txt text\n")
+        .expect(".gitattributes should be written");
+
+    run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("init")
+            .arg("--upgrade")
+            .current_dir(repo.path()),
+    );
+
+    assert_eq!(
+        fs::read_to_string(&keybox).expect("keyring should be readable"),
+        "existing keyring"
+    );
+    assert_eq!(
+        fs::read_to_string(&mapping).expect("mapping should be readable"),
+        "existing mapping\n"
+    );
+
+    let gitignore =
+        fs::read_to_string(repo.path().join(".gitignore")).expect(".gitignore should be readable");
+    assert!(gitignore.contains("target\n"));
+    assert!(gitignore.contains(".gitsecret/keys/random_seed\n"));
+    assert!(gitignore.contains(".gitsecret/keys/*.lock\n"));
+    assert!(gitignore.contains("!*.secret\n"));
+
+    let gitattributes = fs::read_to_string(repo.path().join(".gitattributes"))
+        .expect(".gitattributes should be readable");
+    assert!(gitattributes.contains("*.txt text\n"));
+    assert!(gitattributes.contains("*.secret diff=git-secret\n"));
+
+    let textconv = run_success(
+        Command::new("git")
+            .arg("config")
+            .arg("--get")
+            .arg("diff.git-secret.textconv")
+            .current_dir(repo.path()),
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&textconv.stdout).trim(),
+        "git-secret textconv"
+    );
+}
