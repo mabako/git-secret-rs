@@ -2,8 +2,10 @@
 
 use std::ffi::OsString;
 use std::fs;
+use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub(crate) struct TempRepo {
@@ -13,6 +15,8 @@ pub(crate) struct TempRepo {
 pub(crate) struct TempDir {
     path: PathBuf,
 }
+
+static TEMP_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 impl TempRepo {
     pub(crate) fn new(prefix: &str) -> Self {
@@ -54,12 +58,29 @@ fn create_temp_path(prefix: &str) -> PathBuf {
     let unique = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("system clock should be after unix epoch")
-        .as_nanos() as u64;
-    let path =
-        std::env::temp_dir().join(format!("{}-{:x}-{:x}", prefix, std::process::id(), unique));
-    fs::create_dir_all(&path).expect("temp directory should be created");
-    set_private_directory_permissions(&path);
-    path
+        .as_nanos();
+
+    for _ in 0..100 {
+        let counter = TEMP_COUNTER.fetch_add(1, Ordering::Relaxed);
+        let path = std::env::temp_dir().join(format!(
+            "{}-{:x}-{:x}-{:x}",
+            prefix,
+            std::process::id(),
+            unique,
+            counter
+        ));
+
+        match fs::create_dir(&path) {
+            Ok(()) => {
+                set_private_directory_permissions(&path);
+                return path;
+            }
+            Err(error) if error.kind() == ErrorKind::AlreadyExists => continue,
+            Err(error) => panic!("temp directory should be created: {error}"),
+        }
+    }
+
+    panic!("unique temp directory should be created");
 }
 
 #[cfg(unix)]
