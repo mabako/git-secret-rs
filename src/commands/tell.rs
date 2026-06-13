@@ -4,7 +4,7 @@ use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::git::{
-    ensure_initialized, gpg_arg_path, gpg_command, gpg_needs_msys_paths, repo_gpg, Repo,
+    ensure_initialized, gpg_arg_path, gpg_command, gpg_needs_msys_paths, keys_dir, repo_gpg, Repo,
 };
 use crate::AppResult;
 
@@ -23,9 +23,12 @@ pub(crate) struct Options {
     gpg_homedir: Option<PathBuf>,
     #[arg(value_name = "email-or-fingerprint")]
     keys: Vec<String>,
+    #[arg(short = 'v', help = "Verbose mode, accepted for compatibility")]
+    verbose: bool,
 }
 
 pub(crate) fn run(options: Options) -> AppResult<Vec<String>> {
+    let _ = options.verbose;
     let mut keys = options.keys;
     if options.use_git_email {
         keys.push(git_user_email()?);
@@ -37,10 +40,13 @@ pub(crate) fn run(options: Options) -> AppResult<Vec<String>> {
 
     let repo = Repo::discover()?;
     ensure_initialized(&repo)?;
+    ensure_repository_keyring_has_no_secret_keys(&repo)?;
     let mut imported = Vec::new();
 
     for key in keys {
+        ensure_valid_key_selector(&key)?;
         ensure_unambiguous_public_key(options.gpg_homedir.as_ref(), &key)?;
+        ensure_recipient_is_absent(&repo, &key)?;
         let exported = source_gpg(options.gpg_homedir.as_ref())
             .arg("--batch")
             .arg("--armor")
@@ -59,6 +65,55 @@ pub(crate) fn run(options: Options) -> AppResult<Vec<String>> {
     }
 
     Ok(imported)
+}
+
+fn ensure_valid_key_selector(key: &str) -> AppResult<()> {
+    if looks_like_email(key) || looks_like_hex_key_id(key) {
+        return Ok(());
+    }
+
+    Err(format!(
+        "'{}' is not an email address, fingerprint, or key id",
+        key
+    ))
+}
+
+fn looks_like_email(key: &str) -> bool {
+    let Some((local_part, domain)) = key.split_once('@') else {
+        return false;
+    };
+    !local_part.is_empty() && !domain.is_empty()
+}
+
+fn looks_like_hex_key_id(key: &str) -> bool {
+    key.len() >= 8 && key.chars().all(|character| character.is_ascii_hexdigit())
+}
+
+fn ensure_recipient_is_absent(repo: &Repo, key: &str) -> AppResult<()> {
+    let status = repo_gpg(repo)
+        .arg("--batch")
+        .arg("--list-keys")
+        .arg(key)
+        .status()
+        .map_err(|e| format!("check existing recipient {}: {}", key, e))?;
+    if status.success() {
+        return Err(format!("recipient '{}' already exists", key));
+    }
+
+    Ok(())
+}
+
+fn ensure_repository_keyring_has_no_secret_keys(repo: &Repo) -> AppResult<()> {
+    let legacy_secret_keyring = repo.join(keys_dir()).join("secring.gpg");
+    if legacy_secret_keyring.is_file()
+        && fs::metadata(&legacy_secret_keyring)
+            .map(|metadata| metadata.len() > 0)
+            .unwrap_or(false)
+    {
+        return Err("repository keyring contains secret keys".to_string());
+    }
+
+    Ok(())
 }
 
 fn ensure_unambiguous_public_key(homedir: Option<&PathBuf>, key: &str) -> AppResult<()> {
@@ -179,11 +234,12 @@ mod tests {
     #[test]
     fn tell_options_parse_git_email_and_homedir() {
         let matches = command()
-            .try_get_matches_from(["tell", "-m", "-d", "keys", "user@example.com"])
+            .try_get_matches_from(["tell", "-m", "-v", "-d", "keys", "user@example.com"])
             .unwrap();
         let options = Options::from_arg_matches(&matches).unwrap();
 
         assert!(options.use_git_email);
+        assert!(options.verbose);
         assert_eq!(options.gpg_homedir, Some(PathBuf::from("keys")));
         assert_eq!(options.keys, vec!["user@example.com".to_string()]);
     }
@@ -206,5 +262,13 @@ mod tests {
             ),
             2
         );
+    }
+
+    #[test]
+    fn key_selector_accepts_email_and_hex_key_ids() {
+        assert!(ensure_valid_key_selector("user@example.com").is_ok());
+        assert!(ensure_valid_key_selector("D2805A4182E99FF4").is_ok());
+        assert!(ensure_valid_key_selector("CE82DD3AFC167295F9132371D2805A4182E99FF4").is_ok());
+        assert!(ensure_valid_key_selector("user").is_err());
     }
 }
