@@ -14,11 +14,11 @@ const KEY_PASSPHRASE: &str = "user1pass";
 fn hide_and_reveal_round_trip_with_supplied_keys() {
     let public_key = key_path(
         "GIT_SECRET_TEST_PUBLIC_KEY",
-        fixture_path("keys/public.key"),
+        fixture_path("keys/user1@gitsecret.io/public.key"),
     );
     let private_key = key_path(
         "GIT_SECRET_TEST_PRIVATE_KEY",
-        fixture_path("keys/private.key"),
+        fixture_path("keys/user1@gitsecret.io/private.key"),
     );
     assert!(
         public_key.is_file(),

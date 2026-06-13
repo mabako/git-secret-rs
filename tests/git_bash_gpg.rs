@@ -29,8 +29,16 @@ fn all_commands_work_with_git_bash_gpg() {
     run_git_secret(&gpg, ["init"], repo.path());
 
     let user_gpg_home = TempDir::new("gsgitbash-user");
-    import_key(&gpg, user_gpg_home.path(), fixture_path("keys/public.key"));
-    import_private_key(&gpg, user_gpg_home.path(), fixture_path("keys/private.key"));
+    import_key(
+        &gpg,
+        user_gpg_home.path(),
+        fixture_path("keys/user1@gitsecret.io/public.key"),
+    );
+    import_private_key(
+        &gpg,
+        user_gpg_home.path(),
+        fixture_path("keys/user1@gitsecret.io/private.key"),
+    );
 
     run_git_secret(
         &gpg,
