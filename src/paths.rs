@@ -75,7 +75,7 @@ fn normalize_secret_path_from_current_dir(
         current_relative.join(path)
     };
 
-    normalize_secret_path(&adjusted)
+    normalize_secret_path_with_parents(&adjusted)
 }
 
 fn canonicalize_existing(path: &Path) -> io::Result<PathBuf> {
@@ -97,6 +97,46 @@ pub(crate) fn normalize_secret_path(path: &Path) -> AppResult<String> {
             CurDir => {}
             Normal(piece) => pieces.push(os_to_string(piece)?),
             ParentDir => return Err(format!("{} must not contain '..'", path.display())),
+            RootDir | Prefix(_) => {
+                return Err(format!(
+                    "{} must be relative to the repository",
+                    path.display()
+                ))
+            }
+        }
+    }
+
+    if pieces.is_empty() {
+        return Err("empty file path".to_string());
+    }
+
+    let normalized = pieces.join("/");
+    if normalized.ends_with(&secret_extension()) {
+        return Err("add the plaintext path, not the encrypted file".to_string());
+    }
+
+    Ok(normalized)
+}
+
+fn normalize_secret_path_with_parents(path: &Path) -> AppResult<String> {
+    if path.is_absolute() {
+        return Err(format!(
+            "{} must be relative to the repository",
+            path.display()
+        ));
+    }
+
+    let mut pieces = Vec::new();
+    for component in path.components() {
+        use std::path::Component::*;
+        match component {
+            CurDir => {}
+            Normal(piece) => pieces.push(os_to_string(piece)?),
+            ParentDir => {
+                if pieces.pop().is_none() {
+                    return Err(format!("{} must not escape the repository", path.display()));
+                }
+            }
             RootDir | Prefix(_) => {
                 return Err(format!(
                     "{} must be relative to the repository",
@@ -145,6 +185,18 @@ mod tests {
         assert_eq!(
             normalize_secret_path_from_current_dir(&root, &subdir, Path::new("main.rs")).unwrap(),
             "src/main.rs"
+        );
+    }
+
+    #[test]
+    fn normalize_parent_paths_relative_to_current_subdirectory() {
+        let root = std::env::current_dir().unwrap();
+        let subdir = root.join("src");
+
+        assert_eq!(
+            normalize_secret_path_from_current_dir(&root, &subdir, Path::new("../Cargo.toml"))
+                .unwrap(),
+            "Cargo.toml"
         );
     }
 
