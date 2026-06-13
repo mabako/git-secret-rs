@@ -42,6 +42,9 @@ pub(crate) fn run(args: Vec<OsString>) -> AppResult<()> {
         println!("git-secret-rs {}", env!("CARGO_PKG_VERSION"));
         return Ok(());
     }
+    if matches!(cli.command, Some(Command::KillPerson(_))) {
+        return Err("killperson is deprecated; use 'git secret removeperson' instead".to_string());
+    }
 
     crate::git::validate_repository_state()?;
 
@@ -59,7 +62,9 @@ pub(crate) fn run(args: Vec<OsString>) -> AppResult<()> {
         Command::Textconv(options) => textconv::run(options),
         Command::Clean(options) => clean::run(options),
         Command::Changes(options) => changes::run(options),
-        Command::Help | Command::Usage | Command::Version => unreachable!(),
+        Command::Help | Command::Usage | Command::Version | Command::KillPerson(_) => {
+            unreachable!()
+        }
     }
 }
 
@@ -99,8 +104,11 @@ enum Command {
     Init(init::Options),
 
     /// removes public keys for passed email addresses or GPG fingerprints from repo’s git-secret keyring.
-    #[command(name = "removeperson", alias = "killperson")]
+    #[command(name = "removeperson")]
     RemovePerson(remove_person::Options),
+
+    #[command(name = "killperson", hide = true)]
+    KillPerson(KillPersonOptions),
 
     /// print the files currently considered secret in this repo.
     List(list::Options),
@@ -124,6 +132,12 @@ enum Command {
     Help,
     Usage,
     Version,
+}
+
+#[derive(clap::Args)]
+struct KillPersonOptions {
+    #[arg(allow_hyphen_values = true, trailing_var_arg = true, hide = true)]
+    _args: Vec<OsString>,
 }
 
 #[cfg(test)]

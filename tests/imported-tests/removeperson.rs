@@ -81,15 +81,18 @@ fn removeperson_rejects_bad_argument() {
 }
 
 #[test]
-fn killperson_alias_requires_arguments() {
+fn killperson_prints_deprecation_error() {
     let context = removeperson_context(&[USER1_EMAIL]);
 
     let output = git_secret(context.repo.path())
         .arg("killperson")
+        .arg(USER1_EMAIL)
         .output()
         .expect("git-secret killperson should run");
 
     assert_failure(&output);
+    assert_stderr_contains(&output, "killperson is deprecated");
+    assert_stderr_contains(&output, "git secret removeperson");
 }
 
 #[test]
