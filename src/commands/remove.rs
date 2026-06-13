@@ -22,7 +22,7 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
     let repo = Repo::discover()?;
     ensure_initialized(&repo)?;
     let mut mapping = Mapping::load(&repo)?;
-    let mut removed = 0;
+    let mut removed = Vec::new();
 
     for path in options.paths {
         let normalized = normalize_secret_path_for_repo(&repo, &path)?;
@@ -34,13 +34,17 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
             }
         }
         if mapping.remove(&normalized) {
-            println!("removed {}", normalized);
-            removed += 1;
+            removed.push(normalized);
         }
     }
 
-    if removed > 0 {
+    if !removed.is_empty() {
         mapping.save(&repo)?;
+        println!("git-secret: removed from index.");
+        println!(
+            "git-secret: ensure that files: [{}] are now not ignored.",
+            removed.join(" ")
+        );
     }
 
     Ok(())

@@ -18,6 +18,10 @@ name = "imported_add"
 path = "tests/imported-tests/add.rs"
 
 [[test]]
+name = "imported_remove"
+path = "tests/imported-tests/remove.rs"
+
+[[test]]
 name = "imported_tell"
 path = "tests/imported-tests/tell.rs"
 
