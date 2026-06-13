@@ -1,5 +1,6 @@
 use std::env;
 use std::ffi::{OsStr, OsString};
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
@@ -54,6 +55,64 @@ impl Repo {
 pub(crate) fn ensure_initialized(repo: &Repo) -> AppResult<()> {
     if !repo.join(mapping_file()).is_file() {
         return Err("repository is not initialized; run 'git secret init' first".to_string());
+    }
+
+    Ok(())
+}
+
+pub(crate) fn validate_repository_state() -> AppResult<Repo> {
+    let repo = Repo::discover()?;
+    ensure_secret_dir_is_not_ignored(&repo)?;
+    ensure_repository_keyring_has_no_secret_keys(&repo)?;
+    Ok(repo)
+}
+
+fn ensure_secret_dir_is_not_ignored(repo: &Repo) -> AppResult<()> {
+    let gitignore = repo.join(".gitignore");
+    let content = match fs::read_to_string(&gitignore) {
+        Ok(content) => content,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(error) => return Err(format!("read {}: {}", gitignore.display(), error)),
+    };
+    let secret_dir = gitignore_path(&secret_dir());
+    for line in content.lines() {
+        if gitignore_pattern_ignores_secret_dir(line, &secret_dir) {
+            return Err(format!(
+                "secret directory {} must not be ignored by .gitignore",
+                secret_dir
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+fn gitignore_pattern_ignores_secret_dir(line: &str, secret_dir: &str) -> bool {
+    let pattern = line.trim();
+    if pattern.is_empty() || pattern.starts_with('#') || pattern.starts_with('!') {
+        return false;
+    }
+
+    let pattern = pattern.trim_start_matches('/').trim_end_matches('/');
+    let pattern = pattern
+        .strip_suffix("/**")
+        .or_else(|| pattern.strip_suffix("/*"))
+        .unwrap_or(pattern);
+    pattern == secret_dir
+}
+
+fn gitignore_path(path: &Path) -> String {
+    path.to_string_lossy().replace('\\', "/")
+}
+
+pub(crate) fn ensure_repository_keyring_has_no_secret_keys(repo: &Repo) -> AppResult<()> {
+    let legacy_secret_keyring = repo.join(keys_dir()).join("secring.gpg");
+    if legacy_secret_keyring.is_file()
+        && fs::metadata(&legacy_secret_keyring)
+            .map(|metadata| metadata.len() > 0)
+            .unwrap_or(false)
+    {
+        return Err("repository keyring contains secret keys".to_string());
     }
 
     Ok(())

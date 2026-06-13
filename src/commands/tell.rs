@@ -4,7 +4,7 @@ use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::git::{
-    ensure_initialized, gpg_arg_path, gpg_command, gpg_needs_msys_paths, keys_dir, repo_gpg, Repo,
+    ensure_initialized, gpg_arg_path, gpg_command, gpg_needs_msys_paths, repo_gpg, Repo,
 };
 use crate::AppResult;
 
@@ -40,7 +40,6 @@ pub(crate) fn run(options: Options) -> AppResult<Vec<String>> {
 
     let repo = Repo::discover()?;
     ensure_initialized(&repo)?;
-    ensure_repository_keyring_has_no_secret_keys(&repo)?;
     let mut imported = Vec::new();
 
     for key in keys {
@@ -98,19 +97,6 @@ fn ensure_recipient_is_absent(repo: &Repo, key: &str) -> AppResult<()> {
         .map_err(|e| format!("check existing recipient {}: {}", key, e))?;
     if status.success() {
         return Err(format!("recipient '{}' already exists", key));
-    }
-
-    Ok(())
-}
-
-fn ensure_repository_keyring_has_no_secret_keys(repo: &Repo) -> AppResult<()> {
-    let legacy_secret_keyring = repo.join(keys_dir()).join("secring.gpg");
-    if legacy_secret_keyring.is_file()
-        && fs::metadata(&legacy_secret_keyring)
-            .map(|metadata| metadata.len() > 0)
-            .unwrap_or(false)
-    {
-        return Err("repository keyring contains secret keys".to_string());
     }
 
     Ok(())

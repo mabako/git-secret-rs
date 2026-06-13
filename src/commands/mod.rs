@@ -43,6 +43,8 @@ pub(crate) fn run(args: Vec<OsString>) -> AppResult<()> {
         return Ok(());
     }
 
+    crate::git::validate_repository_state()?;
+
     match cli.command.expect("command should be handled above") {
         Command::Init(options) => init::run(options),
         Command::Tell(options) => tell::run(options).map(|_| ()),
