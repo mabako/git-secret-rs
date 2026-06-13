@@ -17,6 +17,10 @@ path = "tests/imported-tests/init.rs"
 name = "imported_tell"
 path = "tests/imported-tests/tell.rs"
 
+[[test]]
+name = "imported_removeperson"
+path = "tests/imported-tests/removeperson.rs"
+
 [dependencies]
 clap = { version = "4.5.23", features = ["derive"] }
 sha2 = "0.10.8"

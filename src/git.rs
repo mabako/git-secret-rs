@@ -118,6 +118,28 @@ pub(crate) fn ensure_repository_keyring_has_no_secret_keys(repo: &Repo) -> AppRe
     Ok(())
 }
 
+pub(crate) fn ensure_valid_key_selector(key: &str) -> AppResult<()> {
+    if looks_like_email(key) || looks_like_hex_key_id(key) {
+        return Ok(());
+    }
+
+    Err(format!(
+        "'{}' is not an email address, fingerprint, or key id",
+        key
+    ))
+}
+
+fn looks_like_email(key: &str) -> bool {
+    let Some((local_part, domain)) = key.split_once('@') else {
+        return false;
+    };
+    !local_part.is_empty() && !domain.is_empty()
+}
+
+fn looks_like_hex_key_id(key: &str) -> bool {
+    key.len() >= 8 && key.chars().all(|character| character.is_ascii_hexdigit())
+}
+
 pub(crate) fn repo_gpg(repo: &Repo) -> Command {
     let mut command = gpg_command();
     command
@@ -572,5 +594,13 @@ mod tests {
 
         #[cfg(windows)]
         assert!(!is_valid_secret_dir(Path::new(r"C:\secrets")));
+    }
+
+    #[test]
+    fn key_selector_accepts_email_and_hex_key_ids() {
+        assert!(ensure_valid_key_selector("user@example.com").is_ok());
+        assert!(ensure_valid_key_selector("D2805A4182E99FF4").is_ok());
+        assert!(ensure_valid_key_selector("CE82DD3AFC167295F9132371D2805A4182E99FF4").is_ok());
+        assert!(ensure_valid_key_selector("user").is_err());
     }
 }

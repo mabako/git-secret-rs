@@ -4,7 +4,8 @@ use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::git::{
-    ensure_initialized, gpg_arg_path, gpg_command, gpg_needs_msys_paths, repo_gpg, Repo,
+    ensure_initialized, ensure_valid_key_selector, gpg_arg_path, gpg_command, gpg_needs_msys_paths,
+    repo_gpg, Repo,
 };
 use crate::AppResult;
 
@@ -64,28 +65,6 @@ pub(crate) fn run(options: Options) -> AppResult<Vec<String>> {
     }
 
     Ok(imported)
-}
-
-fn ensure_valid_key_selector(key: &str) -> AppResult<()> {
-    if looks_like_email(key) || looks_like_hex_key_id(key) {
-        return Ok(());
-    }
-
-    Err(format!(
-        "'{}' is not an email address, fingerprint, or key id",
-        key
-    ))
-}
-
-fn looks_like_email(key: &str) -> bool {
-    let Some((local_part, domain)) = key.split_once('@') else {
-        return false;
-    };
-    !local_part.is_empty() && !domain.is_empty()
-}
-
-fn looks_like_hex_key_id(key: &str) -> bool {
-    key.len() >= 8 && key.chars().all(|character| character.is_ascii_hexdigit())
 }
 
 fn ensure_recipient_is_absent(repo: &Repo, key: &str) -> AppResult<()> {
@@ -248,13 +227,5 @@ mod tests {
             ),
             2
         );
-    }
-
-    #[test]
-    fn key_selector_accepts_email_and_hex_key_ids() {
-        assert!(ensure_valid_key_selector("user@example.com").is_ok());
-        assert!(ensure_valid_key_selector("D2805A4182E99FF4").is_ok());
-        assert!(ensure_valid_key_selector("CE82DD3AFC167295F9132371D2805A4182E99FF4").is_ok());
-        assert!(ensure_valid_key_selector("user").is_err());
     }
 }

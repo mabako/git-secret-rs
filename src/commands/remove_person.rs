@@ -3,7 +3,9 @@ use std::fs;
 use std::io::Write;
 use std::process::Stdio;
 
-use crate::git::{ensure_initialized, gpg_needs_msys_paths, keys_dir, repo_gpg, Repo};
+use crate::git::{
+    ensure_initialized, ensure_valid_key_selector, gpg_needs_msys_paths, keys_dir, repo_gpg, Repo,
+};
 use crate::AppResult;
 
 #[derive(clap::Args)]
@@ -20,25 +22,35 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
     let repo = Repo::discover()?;
     ensure_initialized(&repo)?;
 
+    remove_keys(&repo, &options.keys)?;
     for key in options.keys {
-        remove_key(&repo, &key)?;
         println!("removed recipient {}", key);
     }
 
     Ok(())
 }
 
-fn remove_key(repo: &Repo, key: &str) -> AppResult<()> {
-    let fingerprints = matching_fingerprints(repo, key)?;
-    if fingerprints.is_empty() && key_is_absent(repo, key)? {
-        return Ok(());
+fn remove_keys(repo: &Repo, keys: &[String]) -> AppResult<()> {
+    let mut removed_fingerprints = Vec::new();
+    for key in keys {
+        ensure_valid_key_selector(key)?;
+        let fingerprints = matching_fingerprints(repo, key)?;
+        if fingerprints.is_empty() {
+            if !key_is_absent(repo, key)? {
+                delete_key(repo, key)?;
+            }
+            continue;
+        }
+        removed_fingerprints.extend(fingerprints);
     }
 
-    if fingerprints.is_empty() {
-        return delete_key(repo, key);
+    removed_fingerprints.sort();
+    removed_fingerprints.dedup();
+    if !removed_fingerprints.is_empty() {
+        rewrite_keyring_without(repo, &removed_fingerprints)?;
     }
 
-    rewrite_keyring_without(repo, &fingerprints)
+    Ok(())
 }
 
 fn delete_key(repo: &Repo, key: &str) -> AppResult<()> {
@@ -149,9 +161,11 @@ fn import_public_key(repo: &Repo, public_key: &[u8]) -> AppResult<()> {
     let mut command = repo_gpg(repo);
     command
         .arg("--batch")
+        .arg("--status-fd")
+        .arg("1")
         .arg("--import")
         .stdin(Stdio::piped())
-        .stdout(Stdio::null());
+        .stdout(Stdio::piped());
     if gpg_needs_msys_paths() {
         command.arg("--no-autostart");
     }
@@ -167,7 +181,7 @@ fn import_public_key(repo: &Repo, public_key: &[u8]) -> AppResult<()> {
     let output = child
         .wait_with_output()
         .map_err(|e| format!("import retained recipient: wait: {}", e))?;
-    if output.status.success() {
+    if output.status.success() || gpg_import_succeeded(&output.stdout) {
         return Ok(());
     }
 
@@ -175,6 +189,12 @@ fn import_public_key(repo: &Repo, public_key: &[u8]) -> AppResult<()> {
         "import retained recipient failed: {}",
         String::from_utf8_lossy(&output.stderr).trim()
     ))
+}
+
+fn gpg_import_succeeded(stdout: &[u8]) -> bool {
+    String::from_utf8_lossy(stdout)
+        .lines()
+        .any(|line| line.starts_with("[GNUPG:] IMPORT_OK "))
 }
 
 fn matching_fingerprints(repo: &Repo, key: &str) -> AppResult<Vec<String>> {
