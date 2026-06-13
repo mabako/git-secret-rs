@@ -16,6 +16,10 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
     let keys_dir = keys_dir();
     let paths_dir = paths_dir();
     let keyring = repo.join(&keys_dir);
+    if repo.join(&secret_dir).exists() && !repo.join(mapping_file()).is_file() {
+        return Err("abort: already initialized.".to_string());
+    }
+
     fs::create_dir_all(&keyring).map_err(|e| format!("create {}: {}", keys_dir.display(), e))?;
     restrict_keyring_permissions(&keyring)?;
     fs::create_dir_all(repo.join(&paths_dir))

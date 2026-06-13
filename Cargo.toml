@@ -9,6 +9,10 @@ license = "MIT OR Apache-2.0"
 name = "git-secret"
 path = "src/main.rs"
 
+[[test]]
+name = "imported_init"
+path = "tests/imported-tests/init.rs"
+
 [dependencies]
 clap = { version = "4.5.23", features = ["derive"] }
 sha2 = "0.10.8"
