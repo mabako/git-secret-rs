@@ -74,7 +74,7 @@ fn changes_help_prints_usage() {
 
 #[test]
 fn hide_help_prints_usage() {
-    assert_git_secret_help(&["hide", "-h"], &["-c", "-F", "-P", "-d", "-m"]);
+    assert_git_secret_help(&["hide", "-h"], &["-c", "-F", "-P", "-d", "-m", "-v"]);
 }
 
 #[test]

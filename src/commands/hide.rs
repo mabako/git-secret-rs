@@ -5,7 +5,7 @@ use crate::crypto::sha256_file;
 use crate::git::{ensure_initialized, recipient_key_ids, repo_gpg, Repo};
 use crate::gpg::gpg_arg_path;
 use crate::mapping::Mapping;
-use crate::paths::{encrypted_path, selected_paths};
+use crate::paths::{encrypted_path, secret_extension, selected_paths};
 use crate::process::CommandExt;
 use crate::AppResult;
 
@@ -27,6 +27,8 @@ pub(crate) struct Options {
     delete_plaintext: bool,
     #[arg(short = 'm', help = "Encrypt files only when modified")]
     modified_only: bool,
+    #[arg(short = 'v', help = "Verbose, shows extra information")]
+    verbose: bool,
     #[arg(value_name = "filename")]
     paths: Vec<PathBuf>,
 }
@@ -41,7 +43,12 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
 
     let mut mapping = Mapping::load(&repo)?;
     let paths = selected_paths(&repo, &mapping, options.paths)?;
+    let total = paths.len();
     let mut mapping_changed = false;
+    let mut hidden = 0;
+    let verbose = options.verbose || super::secrets_verbose();
+    let mut delete_plaintext_header_printed = false;
+
     for path in paths {
         let input = repo.join(&path);
         let output = encrypted_path(&repo, &path);
@@ -71,6 +78,9 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
 
         if options.clean_encrypted && output.exists() {
             fs::remove_file(&output).map_err(|e| format!("remove {}: {}", output.display(), e))?;
+            if verbose {
+                println!("deleted: {}{}", path, secret_extension());
+            }
         }
 
         let mut cmd = repo_gpg(&repo);
@@ -98,16 +108,27 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
         }
 
         if options.delete_plaintext {
+            if verbose && !delete_plaintext_header_printed {
+                println!("removing unencrypted files");
+                delete_plaintext_header_printed = true;
+            }
+            if verbose {
+                println!("{}", path);
+            }
             fs::remove_file(&input).map_err(|e| format!("remove {}: {}", input.display(), e))?;
         }
 
-        println!("encrypted {}", path);
+        hidden += 1;
     }
 
     if mapping_changed {
         mapping.save(&repo)?;
     }
 
+    println!(
+        "git-secret: done. {} of {} files are hidden.",
+        hidden, total
+    );
     Ok(())
 }
 
@@ -123,7 +144,7 @@ mod tests {
     #[test]
     fn hide_options_parse_flags_and_paths() {
         let matches = command()
-            .try_get_matches_from(["hide", "-c", "-F", "-P", "-d", "-m", "secret.env"])
+            .try_get_matches_from(["hide", "-c", "-F", "-P", "-d", "-m", "-v", "secret.env"])
             .unwrap();
         let options = Options::from_arg_matches(&matches).unwrap();
 
@@ -132,6 +153,7 @@ mod tests {
         assert!(options.preserve_permissions);
         assert!(options.delete_plaintext);
         assert!(options.modified_only);
+        assert!(options.verbose);
         assert_eq!(options.paths, vec![PathBuf::from("secret.env")]);
     }
 
