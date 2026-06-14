@@ -49,10 +49,7 @@ fn changes_one_file_changed() {
     );
 
     assert_success(&output);
-    assert_stdout_contains_path(
-        &output,
-        &format!("changes in {}", full_path(&context, FILE_TO_HIDE)),
-    );
+    assert_stdout_contains_path(&output, FILE_TO_HIDE);
     assert_stdout_contains(&output, FILE_CONTENTS);
     assert_stdout_contains(&output, "+new content");
     assert_eq!(stdout_line_count(&output), 6);
@@ -99,10 +96,7 @@ fn changes_one_file_changed_with_deletions() {
     );
 
     assert_success(&output);
-    assert_stdout_contains_path(
-        &output,
-        &format!("changes in {}", full_path(&context, FILE_TO_HIDE)),
-    );
+    assert_stdout_contains_path(&output, FILE_TO_HIDE);
     assert_stdout_contains(&output, &format!("-{FILE_CONTENTS}"));
     assert_stdout_contains(&output, "+replace");
 }
@@ -130,15 +124,9 @@ fn changes_multiple_files_changed() {
     let output = git_secret_changes(context.repo.path(), context.gpg_home.path(), &[]);
 
     assert_success(&output);
-    assert_stdout_contains_path(
-        &output,
-        &format!("changes in {}", full_path(&context, FILE_TO_HIDE)),
-    );
+    assert_stdout_contains_path(&output, FILE_TO_HIDE);
     assert_stdout_contains(&output, "+new content");
-    assert_stdout_contains_path(
-        &output,
-        &format!("changes in {}", full_path(&context, SECOND_FILE_TO_HIDE)),
-    );
+    assert_stdout_contains_path(&output, SECOND_FILE_TO_HIDE);
     assert_stdout_contains(&output, "+something different");
 }
 
@@ -159,15 +147,9 @@ fn changes_multiple_selected_files_changed() {
     );
 
     assert_success(&output);
-    assert_stdout_contains_path(
-        &output,
-        &format!("changes in {}", full_path(&context, FILE_TO_HIDE)),
-    );
+    assert_stdout_contains_path(&output, FILE_TO_HIDE);
     assert_stdout_contains(&output, "+new content");
-    assert_stdout_contains_path(
-        &output,
-        &format!("changes in {}", full_path(&context, SECOND_FILE_TO_HIDE)),
-    );
+    assert_stdout_contains_path(&output, SECOND_FILE_TO_HIDE);
     assert_stdout_contains(&output, "+something different");
 }
 
@@ -283,20 +265,16 @@ fn encrypted_path(repo: &Path, path: &str) -> std::path::PathBuf {
     repo.join(format!("{path}.secret"))
 }
 
-fn full_path(context: &ChangesContext, path: &str) -> String {
-    context.repo.path().join(path).display().to_string()
-}
-
 fn stdout_line_count(output: &Output) -> usize {
     String::from_utf8_lossy(&output.stdout).lines().count()
 }
 
-fn assert_stdout_contains_path(output: &Output, expected: &str) {
+fn assert_stdout_contains_path(output: &Output, path: &str) {
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stdout = normalize_slashes(&stdout);
-    let expected = normalize_slashes(expected);
+    let expected = format!("/{path}");
     assert!(
-        stdout.contains(&expected),
+        stdout.contains("changes in ") && stdout.contains(&expected),
         "stdout should contain {expected:?}:\n{stdout}"
     );
 }

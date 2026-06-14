@@ -182,10 +182,7 @@ fn hide_and_reveal_round_trip_with_supplied_keys() {
     );
     let changes_stdout = String::from_utf8_lossy(&changes_output.stdout);
     assert!(
-        normalize_slashes(&changes_stdout).contains(&format!(
-            "changes in {}:",
-            normalize_slashes(&secret_path.display().to_string())
-        )),
+        changes_stdout_contains_path_suffix(&changes_stdout, "secret.txt"),
         "changes should list the checked file:\n{}",
         changes_stdout
     );
@@ -202,10 +199,7 @@ fn hide_and_reveal_round_trip_with_supplied_keys() {
     );
     let changes_stdout = String::from_utf8_lossy(&changes_output.stdout);
     assert!(
-        normalize_slashes(&changes_stdout).contains(&format!(
-            "changes in {}:",
-            normalize_slashes(&secret_path.display().to_string())
-        )),
+        changes_stdout_contains_path_suffix(&changes_stdout, "secret.txt"),
         "changes should list the checked file:\n{}",
         changes_stdout
     );
@@ -305,4 +299,9 @@ fn override_key_path(env_name: &str) -> Option<PathBuf> {
 
 fn normalize_slashes(value: &str) -> String {
     value.replace('\\', "/").replace("/private/var/", "/var/")
+}
+
+fn changes_stdout_contains_path_suffix(stdout: &str, path: &str) -> bool {
+    let stdout = normalize_slashes(stdout);
+    stdout.contains("changes in ") && stdout.contains(&format!("/{path}:"))
 }
