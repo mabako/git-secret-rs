@@ -111,13 +111,13 @@ fn cat_runs_from_subdirectory() {
 }
 
 fn cat_context() -> CatContext {
-    let repo = TempRepo::new("imported-cat");
+    let repo = TempRepo::new("icat");
     run_success(Command::new("git").arg("init").arg(repo.path()));
     run_success(git_secret(repo.path()).arg("init").current_dir(repo.path()));
 
     import_public_fixture_key(&repo.path().join(".gitsecret").join("keys"), USER1_EMAIL);
 
-    let gpg_home = TempDir::new("imported-cat-gpg");
+    let gpg_home = TempDir::new("icat-gpg");
     import_private_fixture_key(gpg_home.path(), USER1_EMAIL);
 
     fs::write(repo.path().join(FILE_TO_HIDE), FILE_CONTENTS).expect("secret should be written");
