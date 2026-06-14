@@ -26,6 +26,10 @@ name = "imported_hide"
 path = "tests/imported-tests/hide.rs"
 
 [[test]]
+name = "imported_hide_continue"
+path = "tests/imported-tests/hide_continue.rs"
+
+[[test]]
 name = "imported_remove"
 path = "tests/imported-tests/remove.rs"
 
