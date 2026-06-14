@@ -42,6 +42,10 @@ name = "imported_list"
 path = "tests/imported-tests/list.rs"
 
 [[test]]
+name = "imported_noname"
+path = "tests/imported-tests/noname.rs"
+
+[[test]]
 name = "imported_remove"
 path = "tests/imported-tests/remove.rs"
 
