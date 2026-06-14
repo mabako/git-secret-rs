@@ -1,11 +1,17 @@
-use std::fs;
+use std::env;
+use std::fs::{self, OpenOptions};
+use std::io::{self, ErrorKind, Write};
 use std::path::{Path, PathBuf};
+use std::process::{Command, Output};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::git::{ensure_initialized, Repo};
 use crate::gpg::{gpg_arg_path, user_gpg, UserGpgOptions};
 use crate::mapping::Mapping;
 use crate::paths::{encrypted_path, selected_paths};
 use crate::AppResult;
+
+static TEMP_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 #[derive(clap::Args)]
 pub(crate) struct Options {
@@ -39,16 +45,9 @@ fn print_changes(gpg: &UserGpgOptions, repo: &Repo, path: &str) -> AppResult<()>
         return Err(format!("encrypted file not found: {}", secret.display()));
     }
 
-    let plaintext = fs::read(plaintext)
-        .map_err(|e| format!("read plaintext {}: {}", repo.join(path).display(), e))?;
     let decrypted = decrypt_secret(gpg, &secret)?;
     println!("changes in {}:", repo.join(path).display());
-
-    if plaintext == decrypted {
-        return Ok(());
-    }
-
-    print_unified_diff(&decrypted, &plaintext);
+    print_diff(&decrypted, &plaintext)?;
     Ok(())
 }
 
@@ -70,60 +69,120 @@ fn decrypt_secret(gpg: &UserGpgOptions, secret: &Path) -> AppResult<Vec<u8>> {
     }
 }
 
-fn print_unified_diff(old: &[u8], new: &[u8]) {
-    let old = diff_lines(old);
-    let new = diff_lines(new);
-    let prefix_len = common_prefix_len(&old, &new);
-    let suffix_len = common_suffix_len(&old[prefix_len..], &new[prefix_len..]);
-    let old_changed = &old[prefix_len..old.len() - suffix_len];
-    let new_changed = &new[prefix_len..new.len() - suffix_len];
+fn print_diff(decrypted: &[u8], plaintext: &Path) -> AppResult<()> {
+    let decrypted_file = TempFile::write(decrypted)?;
+    let output = run_diff(decrypted_file.path(), plaintext)?;
 
-    println!("--- encrypted");
-    println!("+++ plaintext");
-    println!(
-        "@@ -{},{} +{},{} @@",
-        prefix_len + 1,
-        old_changed.len().max(1),
-        prefix_len + 1,
-        new_changed.len().max(1)
-    );
+    if output.status.success() || output.status.code() == Some(1) {
+        io::stdout()
+            .write_all(&output.stdout)
+            .map_err(|e| format!("write diff output: {}", e))?;
+        return Ok(());
+    }
 
-    if prefix_len > 0 {
-        println!(" {}", old[prefix_len - 1]);
+    Err(format!(
+        "diff {} {}: command exited with {}\n{}",
+        decrypted_file.path().display(),
+        plaintext.display(),
+        output.status,
+        String::from_utf8_lossy(&output.stderr)
+    ))
+}
+
+fn run_diff(left: &Path, right: &Path) -> AppResult<Output> {
+    run_diff_command(Path::new("diff"), left, right).or_else(|error| {
+        if error.kind() != ErrorKind::NotFound {
+            return Err(format!("run diff: {}", error));
+        }
+
+        run_git_diff_command(left, right)
+    })
+}
+
+fn run_diff_command(program: &Path, left: &Path, right: &Path) -> io::Result<Output> {
+    Command::new(program)
+        .arg("-u")
+        .arg(left)
+        .arg(right)
+        .output()
+}
+
+#[cfg(windows)]
+fn run_git_diff_command(left: &Path, right: &Path) -> AppResult<Output> {
+    let mut last_error = None;
+    for program in git_diff_candidates() {
+        match run_diff_command(&program, left, right) {
+            Ok(output) => return Ok(output),
+            Err(error) if error.kind() == ErrorKind::NotFound => last_error = Some(error),
+            Err(error) => return Err(format!("run {}: {}", program.display(), error)),
+        }
     }
-    for line in old_changed {
-        println!("-{}", line);
+
+    Err(format!(
+        "run diff: diff was not found on PATH and Git for Windows diff.exe was not found{}",
+        last_error
+            .map(|error| format!(": {}", error))
+            .unwrap_or_default()
+    ))
+}
+
+#[cfg(not(windows))]
+fn run_git_diff_command(_left: &Path, _right: &Path) -> AppResult<Output> {
+    Err("run diff: diff was not found on PATH".to_string())
+}
+
+#[cfg(windows)]
+fn git_diff_candidates() -> Vec<PathBuf> {
+    ["ProgramFiles", "ProgramW6432", "ProgramFiles(x86)"]
+        .into_iter()
+        .filter_map(env::var_os)
+        .map(|root| {
+            PathBuf::from(root)
+                .join("Git")
+                .join("usr")
+                .join("bin")
+                .join("diff.exe")
+        })
+        .collect()
+}
+
+struct TempFile {
+    path: PathBuf,
+}
+
+impl TempFile {
+    fn write(contents: &[u8]) -> AppResult<Self> {
+        for _ in 0..100 {
+            let counter = TEMP_COUNTER.fetch_add(1, Ordering::Relaxed);
+            let path = env::temp_dir().join(format!(
+                "git-secret-changes-{}-{:x}",
+                std::process::id(),
+                counter
+            ));
+
+            match OpenOptions::new().write(true).create_new(true).open(&path) {
+                Ok(mut file) => {
+                    file.write_all(contents)
+                        .map_err(|e| format!("write {}: {}", path.display(), e))?;
+                    return Ok(Self { path });
+                }
+                Err(error) if error.kind() == ErrorKind::AlreadyExists => continue,
+                Err(error) => return Err(format!("create {}: {}", path.display(), error)),
+            }
+        }
+
+        Err("create temporary decrypted file: no unique path available".to_string())
     }
-    for line in new_changed {
-        println!("+{}", line);
+
+    fn path(&self) -> &Path {
+        &self.path
     }
 }
 
-fn diff_lines(bytes: &[u8]) -> Vec<String> {
-    let text = String::from_utf8_lossy(bytes);
-    let mut lines = text
-        .split('\n')
-        .map(|line| line.strip_suffix('\r').unwrap_or(line).to_string())
-        .collect::<Vec<_>>();
-    if bytes.ends_with(b"\n") {
-        lines.pop();
+impl Drop for TempFile {
+    fn drop(&mut self) {
+        let _ = fs::remove_file(&self.path);
     }
-    lines
-}
-
-fn common_prefix_len(left: &[String], right: &[String]) -> usize {
-    left.iter()
-        .zip(right)
-        .take_while(|(left, right)| left == right)
-        .count()
-}
-
-fn common_suffix_len(left: &[String], right: &[String]) -> usize {
-    left.iter()
-        .rev()
-        .zip(right.iter().rev())
-        .take_while(|(left, right)| left == right)
-        .count()
 }
 
 #[cfg(test)]
