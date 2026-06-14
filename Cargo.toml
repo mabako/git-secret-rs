@@ -38,6 +38,10 @@ name = "imported_reveal"
 path = "tests/imported-tests/reveal.rs"
 
 [[test]]
+name = "imported_reveal_filename"
+path = "tests/imported-tests/reveal_filename.rs"
+
+[[test]]
 name = "imported_tell"
 path = "tests/imported-tests/tell.rs"
 
