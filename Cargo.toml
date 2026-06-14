@@ -30,6 +30,10 @@ name = "imported_clean"
 path = "tests/imported-tests/clean.rs"
 
 [[test]]
+name = "imported_expiration"
+path = "tests/imported-tests/expiration.rs"
+
+[[test]]
 name = "imported_hide"
 path = "tests/imported-tests/hide.rs"
 
