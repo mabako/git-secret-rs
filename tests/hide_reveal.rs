@@ -16,7 +16,7 @@ fn hide_and_reveal_round_trip_with_supplied_keys() {
     let public_key = override_key_path("GIT_SECRET_TEST_PUBLIC_KEY");
     let private_key = override_key_path("GIT_SECRET_TEST_PRIVATE_KEY");
 
-    let repo = TempRepo::new("gshr");
+    let repo = TempRepo::new();
     run_success(Command::new("git").arg("init").arg(repo.path()));
     run_success(
         Command::new(env!("CARGO_BIN_EXE_git-secret"))
@@ -30,7 +30,7 @@ fn hide_and_reveal_round_trip_with_supplied_keys() {
     } else {
         import_public_fixture_key(&keyring, "user1@gitsecret.io");
     }
-    let user_gpg_home = TempDir::new("guser");
+    let user_gpg_home = TempDir::new();
     if let Some(private_key) = private_key {
         import_private_key_to_user_keyring(user_gpg_home.path(), &private_key);
     } else {

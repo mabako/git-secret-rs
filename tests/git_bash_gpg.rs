@@ -20,7 +20,7 @@ fn all_commands_work_with_git_bash_gpg() {
         return;
     };
 
-    let repo = TempRepo::new("gsgitbash");
+    let repo = TempRepo::new();
     run_success(Command::new("git").arg("init").arg(repo.path()));
 
     run_git_secret(&gpg, ["help"], repo.path());
@@ -28,7 +28,7 @@ fn all_commands_work_with_git_bash_gpg() {
     run_git_secret(&gpg, ["version"], repo.path());
     run_git_secret(&gpg, ["init"], repo.path());
 
-    let user_gpg_home = TempDir::new("gsgitbash-user");
+    let user_gpg_home = TempDir::new();
     let user_passphrase = fixture_key_passphrase(USER1_EMAIL);
     import_public_key(
         &gpg,

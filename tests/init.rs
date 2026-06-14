@@ -7,7 +7,7 @@ use support::{gpg_arg_path, gpg_command, run_success, TempRepo};
 
 #[test]
 fn init_creates_repository_files_with_empty_keyring() {
-    let repo = TempRepo::new("git-secret-init");
+    let repo = TempRepo::new();
     run_success(Command::new("git").arg("init").arg(repo.path()));
 
     let output = run_success(
@@ -89,7 +89,7 @@ fn init_creates_repository_files_with_empty_keyring() {
 
 #[test]
 fn init_uses_custom_secrets_dir() {
-    let repo = TempRepo::new("git-secret-init-dir");
+    let repo = TempRepo::new();
     run_success(Command::new("git").arg("init").arg(repo.path()));
 
     run_success(
@@ -127,7 +127,7 @@ fn init_uses_custom_secrets_dir() {
 
 #[test]
 fn init_adds_default_gitignore_entries_without_duplicates() {
-    let repo = TempRepo::new("git-secret-init-gitignore");
+    let repo = TempRepo::new();
     run_success(Command::new("git").arg("init").arg(repo.path()));
     fs::write(
         repo.path().join(".gitignore"),
@@ -175,7 +175,7 @@ fn init_adds_default_gitignore_entries_without_duplicates() {
 
 #[test]
 fn init_adds_gitattributes_diff_driver_without_duplicates() {
-    let repo = TempRepo::new("git-secret-init-gitattributes");
+    let repo = TempRepo::new();
     run_success(Command::new("git").arg("init").arg(repo.path()));
     fs::write(
         repo.path().join(".gitattributes"),
@@ -221,7 +221,7 @@ fn init_adds_gitattributes_diff_driver_without_duplicates() {
 
 #[test]
 fn init_uses_custom_secrets_extension_for_git_files() {
-    let repo = TempRepo::new("git-secret-init-extension");
+    let repo = TempRepo::new();
     run_success(Command::new("git").arg("init").arg(repo.path()));
 
     run_success(
@@ -244,7 +244,7 @@ fn init_uses_custom_secrets_extension_for_git_files() {
 
 #[test]
 fn init_upgrade_preserves_existing_keyring_and_mapping_while_refreshing_git_files() {
-    let repo = TempRepo::new("git-secret-init-upgrade");
+    let repo = TempRepo::new();
     run_success(Command::new("git").arg("init").arg(repo.path()));
 
     let gitsecret = repo.path().join(".gitsecret");

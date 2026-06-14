@@ -7,7 +7,7 @@ use support::{run_success, TempRepo};
 
 #[test]
 fn clean_deletes_secret_files_quietly_unless_verbose() {
-    let repo = TempRepo::new("gsclean");
+    let repo = TempRepo::new();
     run_success(Command::new("git").arg("init").arg(repo.path()));
     run_success(
         Command::new(env!("CARGO_BIN_EXE_git-secret"))

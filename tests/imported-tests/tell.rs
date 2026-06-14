@@ -298,12 +298,12 @@ fn tell_rejects_invalid_fingerprint() {
 }
 
 fn tell_context(emails: &[&str]) -> TellContext {
-    let gpg_home = TempDir::new("imported-tell-gpg");
+    let gpg_home = TempDir::new();
     for email in emails {
         import_public_fixture_key(gpg_home.path(), email);
     }
 
-    let repo = TempRepo::new("imported-tell");
+    let repo = TempRepo::new();
     run_success(Command::new("git").arg("init").arg(repo.path()));
     run_success(git_secret(repo.path()).arg("init").current_dir(repo.path()));
 

@@ -7,7 +7,7 @@ use support::{assert_failure, assert_success, git_secret, run_success, TempDir, 
 
 #[test]
 fn non_help_commands_fail_outside_git_repository() {
-    let dir = TempDir::new("git-secret-no-repo-state");
+    let dir = TempDir::new();
 
     for args in repository_commands() {
         let output = git_secret(dir.path())
@@ -22,7 +22,7 @@ fn non_help_commands_fail_outside_git_repository() {
 
 #[test]
 fn help_usage_and_version_do_not_validate_repository_state() {
-    let dir = TempDir::new("git-secret-help-no-repo-state");
+    let dir = TempDir::new();
 
     for args in [
         Vec::<&str>::new(),
@@ -41,7 +41,7 @@ fn help_usage_and_version_do_not_validate_repository_state() {
 
 #[test]
 fn non_help_commands_fail_when_secret_dir_is_ignored() {
-    let repo = initialized_repo("git-secret-ignored-state");
+    let repo = initialized_repo();
     fs::write(repo.path().join(".gitignore"), ".gitsecret/\n")
         .expect(".gitignore should be written");
 
@@ -58,7 +58,7 @@ fn non_help_commands_fail_when_secret_dir_is_ignored() {
 
 #[test]
 fn init_fails_when_custom_secret_dir_is_ignored() {
-    let repo = TempRepo::new("git-secret-custom-ignored-state");
+    let repo = TempRepo::new();
     run_success(Command::new("git").arg("init").arg(repo.path()));
     fs::write(repo.path().join(".gitignore"), ".secrets/\n").expect(".gitignore should be written");
 
@@ -74,7 +74,7 @@ fn init_fails_when_custom_secret_dir_is_ignored() {
 
 #[test]
 fn non_help_commands_fail_when_repository_keyring_contains_secret_keys() {
-    let repo = initialized_repo("git-secret-secret-key-state");
+    let repo = initialized_repo();
     let secret_keyring = repo
         .path()
         .join(".gitsecret")
@@ -93,8 +93,8 @@ fn non_help_commands_fail_when_repository_keyring_contains_secret_keys() {
     }
 }
 
-fn initialized_repo(prefix: &str) -> TempRepo {
-    let repo = TempRepo::new(prefix);
+fn initialized_repo() -> TempRepo {
+    let repo = TempRepo::new();
     run_success(Command::new("git").arg("init").arg(repo.path()));
     run_success(git_secret(repo.path()).arg("init"));
     repo
