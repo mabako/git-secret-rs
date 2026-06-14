@@ -92,9 +92,10 @@ fn all_commands_work_with_git_bash_gpg() {
         ],
         repo.path(),
     );
-    assert_eq!(
-        String::from_utf8_lossy(&changes.stdout).trim(),
-        "no changes"
+    assert!(
+        String::from_utf8_lossy(&changes.stdout).contains("changes in"),
+        "changes should list checked files:\n{}",
+        String::from_utf8_lossy(&changes.stdout)
     );
 
     let cat = run_git_secret(

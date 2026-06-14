@@ -180,9 +180,11 @@ fn hide_and_reveal_round_trip_with_supplied_keys() {
             .arg(KEY_PASSPHRASE)
             .current_dir(repo.path()),
     );
-    assert_eq!(
-        String::from_utf8_lossy(&changes_output.stdout).trim(),
-        "no changes"
+    let changes_stdout = String::from_utf8_lossy(&changes_output.stdout);
+    assert!(
+        changes_stdout_contains_path_suffix(&changes_stdout, "secret.txt"),
+        "changes should list the checked file:\n{}",
+        changes_stdout
     );
 
     fs::write(&secret_path, "the launch code drifted").expect("plaintext secret should be updated");
@@ -195,9 +197,21 @@ fn hide_and_reveal_round_trip_with_supplied_keys() {
             .arg(KEY_PASSPHRASE)
             .current_dir(repo.path()),
     );
-    assert_eq!(
-        String::from_utf8_lossy(&changes_output.stdout).trim(),
-        "modified\tsecret.txt"
+    let changes_stdout = String::from_utf8_lossy(&changes_output.stdout);
+    assert!(
+        changes_stdout_contains_path_suffix(&changes_stdout, "secret.txt"),
+        "changes should list the checked file:\n{}",
+        changes_stdout
+    );
+    assert!(
+        changes_stdout.contains("-the launch code changed"),
+        "changes should include removed content:\n{}",
+        changes_stdout
+    );
+    assert!(
+        changes_stdout.contains("+the launch code drifted"),
+        "changes should include added content:\n{}",
+        changes_stdout
     );
 
     fs::remove_file(&secret_path).expect("plaintext should be removed before reveal");
@@ -281,4 +295,13 @@ fn override_key_path(env_name: &str) -> Option<PathBuf> {
     );
 
     Some(path)
+}
+
+fn normalize_slashes(value: &str) -> String {
+    value.replace('\\', "/").replace("/private/var/", "/var/")
+}
+
+fn changes_stdout_contains_path_suffix(stdout: &str, path: &str) -> bool {
+    let stdout = normalize_slashes(stdout);
+    stdout.contains("changes in ") && stdout.contains(&format!("/{path}:"))
 }
