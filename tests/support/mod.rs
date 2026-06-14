@@ -62,13 +62,7 @@ fn create_temp_path(prefix: &str) -> PathBuf {
 
     for _ in 0..100 {
         let counter = TEMP_COUNTER.fetch_add(1, Ordering::Relaxed);
-        let path = std::env::temp_dir().join(format!(
-            "{}-{:x}-{:x}-{:x}",
-            prefix,
-            std::process::id(),
-            unique,
-            counter
-        ));
+        let path = std::env::temp_dir().join(format!("{}-{:x}-{:x}", prefix, unique, counter));
 
         match fs::create_dir(&path) {
             Ok(()) => {
