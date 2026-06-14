@@ -175,11 +175,7 @@ fn assert_mapping_does_not_contain(repo: &Path, unexpected: &str) {
 
 fn assert_encrypted_file_exists(repo: &Path, path: &str) {
     let encrypted = encrypted_path(repo, path);
-    assert!(
-        encrypted.is_file(),
-        "{} should exist",
-        encrypted.display()
-    );
+    assert!(encrypted.is_file(), "{} should exist", encrypted.display());
 }
 
 fn assert_encrypted_file_does_not_exist(repo: &Path, path: &str) {
