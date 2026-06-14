@@ -9,7 +9,7 @@ use support::{assert_failure, assert_success, git_secret, run_success, TempDir, 
 
 #[test]
 fn secrets_dir_env_var_defaults_to_gitsecret() {
-    let repo = TempRepo::new("imported-init-default-dir");
+    let repo = TempRepo::new();
     run_success(Command::new("git").arg("init").arg(repo.path()));
 
     let output = git_secret_init(repo.path());
@@ -20,7 +20,7 @@ fn secrets_dir_env_var_defaults_to_gitsecret() {
 
 #[test]
 fn init_fails_without_git_repository() {
-    let dir = TempDir::new("imported-init-no-git");
+    let dir = TempDir::new();
 
     let output = git_secret_init(dir.path());
 
@@ -29,7 +29,7 @@ fn init_fails_without_git_repository() {
 
 #[test]
 fn init_runs_normally() {
-    let repo = TempRepo::new("imported-init-normal");
+    let repo = TempRepo::new();
     run_success(Command::new("git").arg("init").arg(repo.path()));
 
     let output = git_secret_init(repo.path());
@@ -40,7 +40,7 @@ fn init_runs_normally() {
 
 #[test]
 fn init_rejects_extra_filename() {
-    let repo = TempRepo::new("imported-init-extra-file");
+    let repo = TempRepo::new();
     run_success(Command::new("git").arg("init").arg(repo.path()));
 
     let output = git_secret(repo.path())
@@ -54,7 +54,7 @@ fn init_rejects_extra_filename() {
 
 #[test]
 fn init_rejects_bad_argument() {
-    let repo = TempRepo::new("imported-init-bad-arg");
+    let repo = TempRepo::new();
     run_success(Command::new("git").arg("init").arg(repo.path()));
 
     let output = git_secret(repo.path()).arg("init").arg("-Z").output();
@@ -65,7 +65,7 @@ fn init_rejects_bad_argument() {
 
 #[test]
 fn init_from_subdirectory_creates_secret_dir_at_repo_root() {
-    let repo = TempRepo::new("imported-init-subdir");
+    let repo = TempRepo::new();
     run_success(Command::new("git").arg("init").arg(repo.path()));
     let nested_dir = repo.path().join("test_dir").join("nested").join("dirs");
     fs::create_dir_all(&nested_dir).expect("nested test directory should be created");
@@ -79,7 +79,7 @@ fn init_from_subdirectory_creates_secret_dir_at_repo_root() {
 
 #[test]
 fn init_works_when_parent_path_contains_spaces() {
-    let temp = TempDir::new("imported-init-spaces");
+    let temp = TempDir::new();
     let repo = temp.path().join("path with spaces");
     fs::create_dir_all(&repo).expect("spaced repository directory should be created");
     run_success(Command::new("git").arg("init").arg(&repo));
@@ -92,7 +92,7 @@ fn init_works_when_parent_path_contains_spaces() {
 
 #[test]
 fn init_fails_when_gitsecret_directory_already_exists_without_metadata() {
-    let repo = TempRepo::new("imported-init-existing-gitsecret");
+    let repo = TempRepo::new();
     run_success(Command::new("git").arg("init").arg(repo.path()));
     fs::create_dir(repo.path().join(".gitsecret")).expect(".gitsecret should be created");
 

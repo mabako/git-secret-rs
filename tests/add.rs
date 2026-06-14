@@ -7,7 +7,7 @@ use support::{run_success, TempRepo};
 
 #[test]
 fn add_tracks_secret_and_ignores_plaintext_file() {
-    let repo = TempRepo::new("gsadd");
+    let repo = TempRepo::new();
     run_success(Command::new("git").arg("init").arg(repo.path()));
     run_success(
         Command::new(env!("CARGO_BIN_EXE_git-secret"))
@@ -51,7 +51,7 @@ fn add_tracks_secret_and_ignores_plaintext_file() {
 
 #[test]
 fn add_uses_custom_secrets_dir() {
-    let repo = TempRepo::new("gsadd-dir");
+    let repo = TempRepo::new();
     run_success(Command::new("git").arg("init").arg(repo.path()));
     run_success(
         Command::new(env!("CARGO_BIN_EXE_git-secret"))
@@ -81,7 +81,7 @@ fn add_uses_custom_secrets_dir() {
 
 #[test]
 fn add_and_remove_paths_are_relative_to_current_subdirectory() {
-    let repo = TempRepo::new("gsadd-subdir");
+    let repo = TempRepo::new();
     run_success(Command::new("git").arg("init").arg(repo.path()));
     run_success(
         Command::new(env!("CARGO_BIN_EXE_git-secret"))

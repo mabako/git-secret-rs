@@ -389,7 +389,7 @@ fn reveal_all_files_from_subdir() {
 }
 
 fn reveal_context(recipient_emails: &[&str], private_key_emails: &[&str]) -> RevealContext {
-    let repo = TempRepo::new("imported-reveal");
+    let repo = TempRepo::new();
     run_success(Command::new("git").arg("init").arg(repo.path()));
     run_success(git_secret(repo.path()).arg("init").current_dir(repo.path()));
 
@@ -398,7 +398,7 @@ fn reveal_context(recipient_emails: &[&str], private_key_emails: &[&str]) -> Rev
         import_public_fixture_key(&keyring, email);
     }
 
-    let gpg_home = TempDir::new("imported-reveal-gpg");
+    let gpg_home = TempDir::new();
     for email in private_key_emails {
         import_private_fixture_key(gpg_home.path(), email);
     }

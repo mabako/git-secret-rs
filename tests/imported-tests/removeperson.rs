@@ -155,12 +155,12 @@ fn removeperson_fails_entirely_when_any_removed_key_has_secret_key() {
 }
 
 fn removeperson_context(emails: &[&str]) -> RemovePersonContext {
-    let gpg_home = TempDir::new("imported-removeperson-gpg");
+    let gpg_home = TempDir::new();
     for email in emails {
         import_public_fixture_key(gpg_home.path(), email);
     }
 
-    let repo = TempRepo::new("imported-removeperson");
+    let repo = TempRepo::new();
     run_success(Command::new("git").arg("init").arg(repo.path()));
     run_success(git_secret(repo.path()).arg("init").current_dir(repo.path()));
     for email in emails {

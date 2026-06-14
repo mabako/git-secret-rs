@@ -95,7 +95,7 @@ struct RemoveContext {
 }
 
 fn remove_context() -> RemoveContext {
-    let repo = TempRepo::new("imported-remove");
+    let repo = TempRepo::new();
     run_success(Command::new("git").arg("init").arg(repo.path()));
     run_success(git_secret(repo.path()).arg("init").current_dir(repo.path()));
 

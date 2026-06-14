@@ -19,9 +19,9 @@ pub(crate) struct TempDir {
 static TEMP_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 impl TempRepo {
-    pub(crate) fn new(prefix: &str) -> Self {
+    pub(crate) fn new() -> Self {
         Self {
-            path: create_temp_path(prefix),
+            path: create_temp_path("gs"),
         }
     }
 
@@ -37,9 +37,9 @@ impl Drop for TempRepo {
 }
 
 impl TempDir {
-    pub(crate) fn new(prefix: &str) -> Self {
+    pub(crate) fn new() -> Self {
         Self {
-            path: create_temp_path(prefix),
+            path: create_temp_path("gs"),
         }
     }
 

@@ -27,7 +27,7 @@ fn assert_git_secret_help(args: &[&str], expected: &[&str]) {
 
 #[test]
 fn init_help_prints_usage_without_creating_gitsecret() {
-    let repo = TempRepo::new("git-secret-init-help");
+    let repo = TempRepo::new();
     run_success(Command::new("git").arg("init").arg(repo.path()));
 
     let output = run_success(

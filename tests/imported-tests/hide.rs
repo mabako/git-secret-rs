@@ -270,7 +270,7 @@ struct HideContext {
 }
 
 fn hide_context(emails: &[&str]) -> HideContext {
-    let repo = TempRepo::new("imported-hide");
+    let repo = TempRepo::new();
     run_success(Command::new("git").arg("init").arg(repo.path()));
     run_success(git_secret(repo.path()).arg("init").current_dir(repo.path()));
 

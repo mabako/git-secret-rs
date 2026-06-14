@@ -10,10 +10,10 @@ const DUPLICATE_EMAIL: &str = "duplicate@example.com";
 
 #[test]
 fn tell_and_removeperson_accept_fingerprint() {
-    let user_gpg_home = TempDir::new("guser");
+    let user_gpg_home = TempDir::new();
     import_public_fixture_key(user_gpg_home.path(), "user1@gitsecret.io");
 
-    let repo = TempRepo::new("gstr");
+    let repo = TempRepo::new();
     run_success(Command::new("git").arg("init").arg(repo.path()));
     run_success(
         Command::new(env!("CARGO_BIN_EXE_git-secret"))
@@ -72,10 +72,10 @@ fn tell_and_removeperson_accept_fingerprint() {
 
 #[test]
 fn tell_can_use_git_email() {
-    let user_gpg_home = TempDir::new("guser");
+    let user_gpg_home = TempDir::new();
     import_public_fixture_key(user_gpg_home.path(), "user1@gitsecret.io");
 
-    let repo = TempRepo::new("gstm");
+    let repo = TempRepo::new();
     run_success(Command::new("git").arg("init").arg(repo.path()));
     run_success(
         Command::new("git")
@@ -113,10 +113,10 @@ fn tell_can_use_git_email() {
 
 #[test]
 fn tell_rejects_email_that_matches_multiple_local_keys() {
-    let user_gpg_home = TempDir::new("guser-duplicate");
+    let user_gpg_home = TempDir::new();
     import_public_fixture_key(user_gpg_home.path(), "duplicate@example.com");
 
-    let repo = TempRepo::new("gstd");
+    let repo = TempRepo::new();
     run_success(Command::new("git").arg("init").arg(repo.path()));
     run_success(
         Command::new(env!("CARGO_BIN_EXE_git-secret"))
