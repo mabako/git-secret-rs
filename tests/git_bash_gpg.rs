@@ -158,8 +158,8 @@ fn all_commands_work_with_git_bash_gpg() {
     );
 
     run_git_secret(&gpg, ["remove", "-c", "secret.txt"], repo.path());
-    let list = run_git_secret(&gpg, ["list"], repo.path());
-    assert_eq!(String::from_utf8_lossy(&list.stdout).trim(), "");
+    let list = git_secret_output(&gpg, ["list"], repo.path());
+    assert_failure(&list);
 
     run_git_secret(&gpg, ["removeperson", USER1_FINGERPRINT], repo.path());
     let whoknows = git_secret_output(&gpg, ["whoknows"], repo.path());

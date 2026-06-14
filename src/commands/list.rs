@@ -11,7 +11,12 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
     let repo = Repo::discover()?;
     ensure_initialized(&repo)?;
 
-    for path in Mapping::load(&repo)?.paths() {
+    let paths = Mapping::load(&repo)?.paths();
+    if paths.is_empty() {
+        return Err("path mappings file is missing or empty".to_string());
+    }
+
+    for path in paths {
         println!("{}", path);
     }
 
