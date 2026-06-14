@@ -69,7 +69,7 @@ pub(crate) fn run(args: Vec<OsString>) -> AppResult<()> {
 }
 
 pub(crate) fn secrets_verbose() -> bool {
-    std::env::var_os(SECRETS_VERBOSE_ENV).is_some()
+    std::env::var_os(SECRETS_VERBOSE_ENV).is_some_and(|value| !value.is_empty() && value != "0")
 }
 
 pub(crate) fn secrets_gpg_armor() -> bool {

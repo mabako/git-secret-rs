@@ -43,8 +43,8 @@ fn clean_deletes_secret_files_quietly_unless_verbose() {
             .current_dir(repo.path()),
     );
     let verbose = String::from_utf8_lossy(&verbose.stdout);
-    assert!(verbose.contains("removed root.txt.secret"));
-    assert!(verbose.contains("removed nested/nested.txt.secret"));
+    assert!(verbose.contains("git-secret: deleted: root.txt.secret"));
+    assert!(verbose.contains("git-secret: deleted: nested/nested.txt.secret"));
 
     fs::write(&root_secret, "encrypted root").expect("root secret should be written again");
     let env_verbose = run_success(
@@ -54,7 +54,7 @@ fn clean_deletes_secret_files_quietly_unless_verbose() {
             .current_dir(repo.path()),
     );
     let env_verbose = String::from_utf8_lossy(&env_verbose.stdout);
-    assert!(env_verbose.contains("removed root.txt.secret"));
+    assert!(env_verbose.contains("git-secret: deleted: root.txt.secret"));
 
     let custom_secret = repo.path().join("custom.txt.enc");
     let default_secret = repo.path().join("default.txt.secret");
@@ -68,7 +68,7 @@ fn clean_deletes_secret_files_quietly_unless_verbose() {
             .current_dir(repo.path()),
     );
     let custom_extension = String::from_utf8_lossy(&custom_extension.stdout);
-    assert!(custom_extension.contains("removed custom.txt.enc"));
+    assert!(custom_extension.contains("git-secret: deleted: custom.txt.enc"));
     assert!(!custom_secret.exists());
     assert!(
         default_secret.exists(),

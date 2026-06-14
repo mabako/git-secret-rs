@@ -20,7 +20,10 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
     for path in secret_files {
         fs::remove_file(&path).map_err(|e| format!("remove {}: {}", path.display(), e))?;
         if verbose {
-            println!("removed {}", repo_relative_path(repo.root(), &path)?);
+            println!(
+                "git-secret: deleted: {}",
+                repo_relative_path(repo.root(), &path)?
+            );
         }
     }
 
