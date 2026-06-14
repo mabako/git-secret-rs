@@ -302,5 +302,5 @@ fn assert_stdout_contains_path(output: &Output, expected: &str) {
 }
 
 fn normalize_slashes(value: &str) -> String {
-    value.replace('\\', "/")
+    value.replace('\\', "/").replace("/private/var/", "/var/")
 }

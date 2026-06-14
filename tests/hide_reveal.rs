@@ -304,5 +304,5 @@ fn override_key_path(env_name: &str) -> Option<PathBuf> {
 }
 
 fn normalize_slashes(value: &str) -> String {
-    value.replace('\\', "/")
+    value.replace('\\', "/").replace("/private/var/", "/var/")
 }
