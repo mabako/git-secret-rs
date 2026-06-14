@@ -22,6 +22,10 @@ name = "imported_cat"
 path = "tests/imported-tests/cat.rs"
 
 [[test]]
+name = "imported_changes"
+path = "tests/imported-tests/changes.rs"
+
+[[test]]
 name = "imported_hide"
 path = "tests/imported-tests/hide.rs"
 
