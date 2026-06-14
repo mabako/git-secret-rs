@@ -13,8 +13,7 @@ pub(crate) fn run(options: Options) -> AppResult<()> {
     let recipients = recipient_records(&repo)?;
 
     if recipients.is_empty() {
-        println!("no recipients configured");
-        return Ok(());
+        return Err("no recipients configured".to_string());
     }
 
     for recipient in recipients {

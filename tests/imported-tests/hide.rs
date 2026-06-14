@@ -6,7 +6,8 @@ use std::process::{Command, Output};
 mod support;
 
 use support::{
-    assert_failure, assert_success, git_secret, import_public_fixture_key, run_success, TempRepo,
+    assert_failure, assert_stdout_contains, assert_success, git_secret, import_public_fixture_key,
+    run_success, TempRepo,
 };
 
 const USER1_EMAIL: &str = "user1@gitsecret.io";
@@ -332,14 +333,6 @@ fn assert_done(output: &Output, hidden: usize, total: usize) {
     assert_stdout_contains(
         output,
         &format!("git-secret: done. {hidden} of {total} files are hidden."),
-    );
-}
-
-fn assert_stdout_contains(output: &Output, expected: &str) {
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(
-        stdout.contains(expected),
-        "stdout should contain {expected:?}:\n{stdout}"
     );
 }
 

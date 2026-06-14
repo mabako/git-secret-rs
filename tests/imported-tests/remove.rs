@@ -5,7 +5,9 @@ use std::process::{Command, Output};
 #[path = "../support/mod.rs"]
 mod support;
 
-use support::{assert_failure, assert_success, git_secret, run_success, TempRepo};
+use support::{
+    assert_failure, assert_stdout_contains, assert_success, git_secret, run_success, TempRepo,
+};
 
 const FIRST_FILE: &str = "space file";
 const SECOND_FILE: &str = "space file two";
@@ -184,13 +186,5 @@ fn assert_encrypted_file_does_not_exist(repo: &Path, path: &str) {
         !encrypted.exists(),
         "{} should not exist",
         encrypted.display()
-    );
-}
-
-fn assert_stdout_contains(output: &Output, expected: &str) {
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(
-        stdout.contains(expected),
-        "stdout should contain {expected:?}:\n{stdout}"
     );
 }

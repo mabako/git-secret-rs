@@ -6,8 +6,8 @@ use std::process::{Command, Output};
 mod support;
 
 use support::{
-    assert_failure, assert_success, git_secret, import_public_fixture_key, run_success, TempDir,
-    TempRepo,
+    assert_failure, assert_stderr_contains, assert_stdout_contains, assert_success, git_secret,
+    import_public_fixture_key, run_success, TempDir, TempRepo,
 };
 
 const USER1_EMAIL: &str = "user1@gitsecret.io";
@@ -335,7 +335,11 @@ fn assert_whoknows_contains(current_dir: &Path, expected: &str) {
 
 fn assert_whoknows_does_not_contain(current_dir: &Path, unexpected: &str) {
     let output = git_secret_whoknows(current_dir);
-    assert_success(&output);
+    if !output.status.success() {
+        assert_stderr_contains(&output, "no recipients configured");
+        return;
+    }
+
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(
         !stdout.contains(unexpected),
@@ -345,17 +349,6 @@ fn assert_whoknows_does_not_contain(current_dir: &Path, unexpected: &str) {
 
 fn assert_no_recipients(current_dir: &Path) {
     let output = git_secret_whoknows(current_dir);
-    assert_success(&output);
-    assert_eq!(
-        String::from_utf8_lossy(&output.stdout).trim(),
-        "no recipients configured"
-    );
-}
-
-fn assert_stdout_contains(output: &Output, expected: &str) {
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(
-        stdout.contains(expected),
-        "stdout should contain {expected:?}:\n{stdout}"
-    );
+    assert_failure(&output);
+    assert_stderr_contains(&output, "no recipients configured");
 }

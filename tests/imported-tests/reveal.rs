@@ -6,8 +6,8 @@ use std::process::{Command, Output};
 mod support;
 
 use support::{
-    assert_failure, assert_success, fixture_key_passphrase, git_secret, import_private_fixture_key,
-    import_public_fixture_key, run_success, TempDir, TempRepo,
+    assert_failure, assert_stdout_contains, assert_success, fixture_key_passphrase, git_secret,
+    import_private_fixture_key, import_public_fixture_key, run_success, TempDir, TempRepo,
 };
 
 const USER1_EMAIL: &str = "user1@gitsecret.io";
@@ -469,12 +469,4 @@ fn assert_plaintext_exists(repo: &Path) {
 
 fn assert_plaintext_does_not_exist(repo: &Path) {
     assert!(!repo.join(FILE_TO_HIDE).exists());
-}
-
-fn assert_stdout_contains(output: &Output, expected: &str) {
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(
-        stdout.contains(expected),
-        "stdout should contain {expected:?}:\n{stdout}"
-    );
 }

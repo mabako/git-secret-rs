@@ -7,7 +7,9 @@ use std::process::Command;
 
 mod support;
 
-use support::{fixture_key_passphrase, fixture_key_path, run_success, TempDir, TempRepo};
+use support::{
+    assert_failure, fixture_key_passphrase, fixture_key_path, run_success, TempDir, TempRepo,
+};
 
 const USER1_EMAIL: &str = "user1@gitsecret.io";
 const USER1_FINGERPRINT: &str = "CE82DD3AFC167295F9132371D2805A4182E99FF4";
@@ -159,10 +161,12 @@ fn all_commands_work_with_git_bash_gpg() {
     assert_eq!(String::from_utf8_lossy(&list.stdout).trim(), "");
 
     run_git_secret(&gpg, ["removeperson", USER1_FINGERPRINT], repo.path());
-    let whoknows = run_git_secret(&gpg, ["whoknows"], repo.path());
-    assert_eq!(
-        String::from_utf8_lossy(&whoknows.stdout).trim(),
-        "no recipients configured"
+    let whoknows = git_secret_output(&gpg, ["whoknows"], repo.path());
+    assert_failure(&whoknows);
+    assert!(
+        String::from_utf8_lossy(&whoknows.stderr).contains("no recipients configured"),
+        "whoknows should report no recipients:\n{}",
+        String::from_utf8_lossy(&whoknows.stderr)
     );
 }
 
@@ -177,6 +181,19 @@ where
         .env("SECRETS_GPG_COMMAND", gpg)
         .current_dir(current_dir);
     run_success(&mut command)
+}
+
+fn git_secret_output<I, S>(gpg: &Path, args: I, current_dir: &Path) -> std::process::Output
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<OsStr>,
+{
+    let mut command = Command::new(env!("CARGO_BIN_EXE_git-secret"));
+    command
+        .args(args)
+        .env("SECRETS_GPG_COMMAND", gpg)
+        .current_dir(current_dir);
+    command.output().expect("git-secret command should run")
 }
 
 fn import_public_key(gpg: &Path, homedir: &Path, key: PathBuf) {

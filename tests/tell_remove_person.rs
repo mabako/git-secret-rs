@@ -2,7 +2,7 @@ use std::process::Command;
 
 mod support;
 
-use support::{import_public_fixture_key, run_success, TempDir, TempRepo};
+use support::{assert_failure, import_public_fixture_key, run_success, TempDir, TempRepo};
 
 const USER1_FINGERPRINT: &str = "CE82DD3AFC167295F9132371D2805A4182E99FF4";
 const USER1_UID: &str = "user1 <user1@gitsecret.io>";
@@ -59,14 +59,16 @@ fn tell_and_removeperson_accept_fingerprint() {
             .current_dir(repo.path()),
     );
 
-    let whoknows = run_success(
-        Command::new(env!("CARGO_BIN_EXE_git-secret"))
-            .arg("whoknows")
-            .current_dir(repo.path()),
-    );
-    assert_eq!(
-        String::from_utf8_lossy(&whoknows.stdout).trim(),
-        "no recipients configured"
+    let whoknows = Command::new(env!("CARGO_BIN_EXE_git-secret"))
+        .arg("whoknows")
+        .current_dir(repo.path())
+        .output()
+        .expect("git-secret whoknows should run");
+    assert_failure(&whoknows);
+    assert!(
+        String::from_utf8_lossy(&whoknows.stderr).contains("no recipients configured"),
+        "whoknows should report no recipients:\n{}",
+        String::from_utf8_lossy(&whoknows.stderr)
     );
 }
 

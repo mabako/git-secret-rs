@@ -46,6 +46,10 @@ name = "imported_tell"
 path = "tests/imported-tests/tell.rs"
 
 [[test]]
+name = "imported_whoknows"
+path = "tests/imported-tests/whoknows.rs"
+
+[[test]]
 name = "imported_removeperson"
 path = "tests/imported-tests/removeperson.rs"
 

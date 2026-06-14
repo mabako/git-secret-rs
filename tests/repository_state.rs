@@ -3,7 +3,10 @@ use std::process::Command;
 
 mod support;
 
-use support::{assert_failure, assert_success, git_secret, run_success, TempDir, TempRepo};
+use support::{
+    assert_failure, assert_stderr_contains, assert_success, git_secret, run_success, TempDir,
+    TempRepo,
+};
 
 #[test]
 fn non_help_commands_fail_outside_git_repository() {
@@ -116,12 +119,4 @@ fn repository_commands() -> Vec<Vec<&'static str>> {
         vec!["textconv", "secret.txt.secret"],
         vec!["whoknows"],
     ]
-}
-
-fn assert_stderr_contains(output: &std::process::Output, expected: &str) {
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(
-        stderr.contains(expected),
-        "stderr should contain {expected:?}:\n{stderr}"
-    );
 }

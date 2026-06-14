@@ -125,6 +125,22 @@ pub(crate) fn assert_failure(output: &Output) {
     );
 }
 
+pub(crate) fn assert_stdout_contains(output: &Output, expected: &str) {
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains(expected),
+        "stdout should contain {expected:?}:\n{stdout}"
+    );
+}
+
+pub(crate) fn assert_stderr_contains(output: &Output, expected: &str) {
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains(expected),
+        "stderr should contain {expected:?}:\n{stderr}"
+    );
+}
+
 pub(crate) fn gpg_command() -> Command {
     Command::new(gpg_program())
 }

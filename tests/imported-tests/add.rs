@@ -5,7 +5,9 @@ use std::process::{Command, Output};
 #[path = "../support/mod.rs"]
 mod support;
 
-use support::{assert_failure, assert_success, git_secret, run_success, TempRepo};
+use support::{
+    assert_failure, assert_stdout_contains, assert_success, git_secret, run_success, TempRepo,
+};
 
 const DEFAULT_FILENAME: &str = "space file";
 const SECOND_FILENAME: &str = "space file two";
@@ -287,12 +289,4 @@ fn assert_git_check_ignore(repo: &Path, path: &str) {
         .output()
         .expect("git check-ignore should run");
     assert_success(&output);
-}
-
-fn assert_stdout_contains(output: &Output, expected: &str) {
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(
-        stdout.contains(expected),
-        "stdout should contain {expected:?}:\n{stdout}"
-    );
 }

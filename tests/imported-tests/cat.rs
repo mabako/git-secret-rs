@@ -6,7 +6,7 @@ use std::process::{Command, Output};
 mod support;
 
 use support::{
-    assert_failure, assert_success, git_secret, import_private_fixture_key,
+    assert_failure, assert_stdout_contains, assert_success, git_secret, import_private_fixture_key,
     import_public_fixture_key, run_success, TempDir, TempRepo,
 };
 
@@ -152,12 +152,4 @@ fn git_secret_cat(current_dir: &Path, gpg_home: &Path, paths: &[&str]) -> Output
 
 fn fixture_passphrase() -> &'static str {
     "user1pass"
-}
-
-fn assert_stdout_contains(output: &Output, expected: &str) {
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(
-        stdout.contains(expected),
-        "stdout should contain {expected:?}:\n{stdout}"
-    );
 }
