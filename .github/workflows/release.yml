@@ -1,0 +1,90 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v**"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build release binary (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x86_64
+            os: ubuntu-latest
+            archive: git-secret-linux-x86_64.tar.gz
+            binary: target/release/git-secret
+          - name: windows-x86_64
+            os: windows-latest
+            archive: git-secret-windows-x86_64.zip
+            binary: target/release/git-secret.exe
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Install Rust
+        shell: bash
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+
+      - name: Build
+        run: cargo build --locked --release
+
+      - name: Package Linux binary
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp "${{ matrix.binary }}" dist/git-secret
+          tar -C dist -czf "${{ matrix.archive }}" git-secret
+
+      - name: Package Windows binary
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path dist -Force | Out-Null
+          Copy-Item -Path "${{ matrix.binary }}" -Destination dist\git-secret.exe
+          Compress-Archive -Path dist\git-secret.exe -DestinationPath "${{ matrix.archive }}" -Force
+
+      - name: Upload packaged binary
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.name }}
+          path: ${{ matrix.archive }}
+          if-no-files-found: error
+
+  release:
+    name: Prepare GitHub release
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Download packaged binaries
+        uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            gh release upload "$TAG_NAME" dist/* --clobber
+          else
+            gh release create "$TAG_NAME" dist/* \
+              --draft \
+              --verify-tag \
+              --title "$TAG_NAME" \
+              --notes "Release assets for $TAG_NAME."
+          fi
