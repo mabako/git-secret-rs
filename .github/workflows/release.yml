@@ -21,6 +21,10 @@ jobs:
             os: ubuntu-latest
             archive: git-secret-linux-x86_64.tar.gz
             binary: target/release/git-secret
+          - name: macos-aarch64
+            os: macos-latest
+            archive: git-secret-macos-aarch64.tar.gz
+            binary: target/release/git-secret
           - name: windows-x86_64
             os: windows-latest
             archive: git-secret-windows-x86_64.zip
@@ -41,6 +45,14 @@ jobs:
 
       - name: Package Linux binary
         if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp "${{ matrix.binary }}" dist/git-secret
+          tar -C dist -czf "${{ matrix.archive }}" git-secret
+
+      - name: Package macOS binary
+        if: runner.os == 'macOS'
         shell: bash
         run: |
           mkdir -p dist
