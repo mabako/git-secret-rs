@@ -143,3 +143,34 @@ fn add_and_remove_paths_are_relative_to_current_subdirectory() {
         "remove -c should delete encrypted files"
     );
 }
+
+#[test]
+fn add_preserves_mapping_order() {
+    let repo = TempRepo::new();
+    run_success(Command::new("git").arg("init").arg(repo.path()));
+    run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("init")
+            .current_dir(repo.path()),
+    );
+
+    fs::write(repo.path().join("z.env"), "last alphabetically").expect("secret should be written");
+    fs::write(repo.path().join("a.env"), "first alphabetically").expect("secret should be written");
+
+    run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("add")
+            .arg("z.env")
+            .current_dir(repo.path()),
+    );
+    run_success(
+        Command::new(env!("CARGO_BIN_EXE_git-secret"))
+            .arg("add")
+            .arg("a.env")
+            .current_dir(repo.path()),
+    );
+
+    let mapping = fs::read_to_string(repo.path().join(".gitsecret/paths/mapping.cfg"))
+        .expect("mapping should be readable");
+    assert_eq!(mapping, "z.env:\na.env:\n");
+}

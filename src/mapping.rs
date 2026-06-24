@@ -34,8 +34,6 @@ impl Mapping {
                 entries.push(MappingEntry { path, sha256 });
             }
         }
-        entries.sort_by(|left, right| left.path.cmp(&right.path));
-
         Ok(Self { entries })
     }
 
@@ -50,8 +48,6 @@ impl Mapping {
         }
 
         self.entries.push(MappingEntry { path, sha256 });
-        self.entries
-            .sort_by(|left, right| left.path.cmp(&right.path));
         true
     }
 
@@ -111,23 +107,24 @@ mod tests {
     use super::*;
 
     #[test]
-    fn mapping_stays_sorted_and_unique() {
+    fn mapping_preserves_order_and_unique_paths() {
         let mut mapping = Mapping {
             entries: Vec::new(),
         };
         assert!(mapping.insert_or_update("b.env".to_string(), "b".repeat(64)));
         assert!(mapping.insert_or_update("a.env".to_string(), "a".repeat(64)));
+        assert!(mapping.insert_or_update("b.env".to_string(), "c".repeat(64)));
         assert!(!mapping.insert_or_update("a.env".to_string(), "a".repeat(64)));
         assert_eq!(
             mapping.entries,
             vec![
                 MappingEntry {
-                    path: "a.env".to_string(),
-                    sha256: "a".repeat(64),
+                    path: "b.env".to_string(),
+                    sha256: "c".repeat(64),
                 },
                 MappingEntry {
-                    path: "b.env".to_string(),
-                    sha256: "b".repeat(64),
+                    path: "a.env".to_string(),
+                    sha256: "a".repeat(64),
                 }
             ]
         );
